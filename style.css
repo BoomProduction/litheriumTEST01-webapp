@@ -670,8 +670,8 @@ textarea {
 .no-decks-message .icon {
     font-size: 48px;
     margin-bottom: 16px;
-}
-/* Добавляем в конец файла */
+
+    /* Добавляем в конец файла */
 
 /* Основные функции */
 .settings-content {
@@ -762,4 +762,30 @@ textarea {
     .setting-control select {
         border-color: #444;
     }
+}
+/* Добавляем в конец файла */
+
+/* Кнопка удаления колоды */
+.btn-delete-deck {
+    background: var(--danger-color);
+    color: white;
+    padding: 8px 16px;
+    border-radius: var(--border-radius);
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: 8px;
+}
+
+.deck-item {
+    position: relative;
+}
+
+.deck-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+/* Остальные существующие стили остаются без изменений */
 }

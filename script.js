@@ -13,6 +13,121 @@ let state = {
         learnedToday: 0,
         lastStudyDate: null,
         sessionsCompleted: 0
+    },
+    settings: {
+        language: 'ru'
+    }
+};
+
+// Тексты для разных языков
+const translations = {
+    ru: {
+        // Главное меню
+        mainFunctions: "Основные функции",
+        settings: "Настройки",
+        aboutAuthor: "Об авторе",
+        
+        // Основные функции
+        myDecks: "Мои колоды",
+        learnWords: "Учить слова",
+        statistics: "Статистика",
+        
+        // Настройки
+        settingsDescription: "Вы перешли к настройкам. Выберите вам подходящий пункт:",
+        interfaceLanguage: "Язык интерфейса",
+        choosePreferredLanguage: "Выберите предпочитаемый язык",
+        clearData: "Очистить данные",
+        clearDataDescription: "Удалить все колоды и статистику",
+        resetProgress: "Сбросить прогресс",
+        resetProgressDescription: "Обнулить статистику обучения",
+        clear: "Очистить",
+        reset: "Сбросить",
+        
+        // Обучение
+        startLearning: "Начать обучение",
+        know: "Знаю",
+        tryAgain: "Еще раз",
+        sessionCompleted: "Сессия завершена!",
+        correct: "Правильно",
+        needReview: "Нужно повторить",
+        success: "Успех",
+        backToMenu: "В меню",
+        repeat: "Повторить",
+        anotherDeck: "Другая колода",
+        
+        // Статистика
+        totalCards: "Всего карточек",
+        decks: "Колод",
+        learnedToday: "Изучено сегодня",
+        recentActivity: "Последние действия",
+        
+        // Колоды
+        createFirstDeck: "Создайте первую колоду чтобы начать учить слова",
+        noCards: "В этой колоде пока нет карточек",
+        addFirstCard: "Добавьте первую карточку чтобы начать обучение",
+        deckName: "Название колоды",
+        description: "Описание (необязательно)",
+        create: "Создать",
+        cancel: "Отмена",
+        wordQuestion: "Слово/Вопрос",
+        translationAnswer: "Перевод/Ответ",
+        add: "Добавить",
+        edit: "Изменить",
+        delete: "Удалить"
+    },
+    en: {
+        // Main menu
+        mainFunctions: "Main Functions",
+        settings: "Settings",
+        aboutAuthor: "About Author",
+        
+        // Main functions
+        myDecks: "My Decks",
+        learnWords: "Learn Words",
+        statistics: "Statistics",
+        
+        // Settings
+        settingsDescription: "You have entered the settings. Choose the appropriate option:",
+        interfaceLanguage: "Interface Language",
+        choosePreferredLanguage: "Choose preferred language",
+        clearData: "Clear Data",
+        clearDataDescription: "Delete all decks and statistics",
+        resetProgress: "Reset Progress",
+        resetProgressDescription: "Reset learning statistics",
+        clear: "Clear",
+        reset: "Reset",
+        
+        // Learning
+        startLearning: "Start Learning",
+        know: "Know",
+        tryAgain: "Try Again",
+        sessionCompleted: "Session Completed!",
+        correct: "Correct",
+        needReview: "Need Review",
+        success: "Success",
+        backToMenu: "Back to Menu",
+        repeat: "Repeat",
+        anotherDeck: "Another Deck",
+        
+        // Statistics
+        totalCards: "Total Cards",
+        decks: "Decks",
+        learnedToday: "Learned Today",
+        recentActivity: "Recent Activity",
+        
+        // Decks
+        createFirstDeck: "Create your first deck to start learning words",
+        noCards: "There are no cards in this deck yet",
+        addFirstCard: "Add your first card to start learning",
+        deckName: "Deck Name",
+        description: "Description (optional)",
+        create: "Create",
+        cancel: "Cancel",
+        wordQuestion: "Word/Question",
+        translationAnswer: "Translation/Answer",
+        add: "Add",
+        edit: "Edit",
+        delete: "Delete"
     }
 };
 
@@ -22,6 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStats();
     showScreen('menuScreen');
     initDemoData();
+    applyLanguage();
 });
 
 // Управление экранами
@@ -39,6 +155,91 @@ function showScreen(screenName) {
         updateStats();
     } else if (screenName === 'learnScreen') {
         showDeckSelection();
+    } else if (screenName === 'settingsScreen') {
+        updateSettingsDisplay();
+    }
+}
+
+// Применение языка
+function applyLanguage() {
+    const lang = state.settings.language;
+    const t = translations[lang];
+    
+    // Обновляем тексты в реальном времени
+    document.querySelectorAll('[data-translate]').forEach(element => {
+        const key = element.getAttribute('data-translate');
+        if (t[key]) {
+            element.textContent = t[key];
+        }
+    });
+    
+    // Обновляем placeholder'ы
+    const deckNameInput = document.getElementById('newDeckName');
+    const deckDescInput = document.getElementById('newDeckDescription');
+    const cardFrontInput = document.getElementById('newCardFront');
+    const cardBackInput = document.getElementById('newCardBack');
+    
+    if (deckNameInput) deckNameInput.placeholder = t.deckName;
+    if (deckDescInput) deckDescInput.placeholder = t.description;
+    if (cardFrontInput) cardFrontInput.placeholder = t.wordQuestion;
+    if (cardBackInput) cardBackInput.placeholder = t.translationAnswer;
+}
+
+function changeLanguage(lang) {
+    state.settings.language = lang;
+    saveData();
+    applyLanguage();
+    
+    // Показываем уведомление о смене языка
+    alert(lang === 'ru' ? 'Язык изменен на русский' : 'Language changed to English');
+}
+
+function updateSettingsDisplay() {
+    const languageSelect = document.getElementById('languageSelect');
+    if (languageSelect) {
+        languageSelect.value = state.settings.language;
+    }
+}
+
+// Функции для настроек
+function clearAllData() {
+    if (confirm(state.settings.language === 'ru' ? 
+        'Вы уверены? Это удалит все колоды и статистику.' : 
+        'Are you sure? This will delete all decks and statistics.')) {
+        
+        state.decks = [];
+        state.stats = {
+            totalLearned: 0,
+            learnedToday: 0,
+            lastStudyDate: null,
+            sessionsCompleted: 0
+        };
+        saveData();
+        updateStats();
+        
+        alert(state.settings.language === 'ru' ? 
+            'Все данные очищены' : 
+            'All data has been cleared');
+    }
+}
+
+function resetProgress() {
+    if (confirm(state.settings.language === 'ru' ? 
+        'Вы уверены? Это обнулит всю статистику обучения.' : 
+        'Are you sure? This will reset all learning statistics.')) {
+        
+        state.stats = {
+            totalLearned: 0,
+            learnedToday: 0,
+            lastStudyDate: null,
+            sessionsCompleted: 0
+        };
+        saveData();
+        updateStats();
+        
+        alert(state.settings.language === 'ru' ? 
+            'Прогресс сброшен' : 
+            'Progress has been reset');
     }
 }
 
@@ -48,11 +249,12 @@ function renderDecksList() {
     decksList.innerHTML = '';
 
     if (state.decks.length === 0) {
+        const t = translations[state.settings.language];
         decksList.innerHTML = `
             <div class="no-decks-message">
                 <div class="icon">📚</div>
-                <p>У вас пока нет колод</p>
-                <p style="font-size: 14px; margin-top: 8px;">Создайте первую колоду чтобы начать учить слова</p>
+                <p>${state.settings.language === 'ru' ? 'У вас пока нет колод' : 'You have no decks yet'}</p>
+                <p style="font-size: 14px; margin-top: 8px;">${t.createFirstDeck}</p>
             </div>
         `;
         return;
@@ -66,10 +268,10 @@ function renderDecksList() {
         deckElement.innerHTML = `
             <div class="deck-info">
                 <h3>${deck.name}</h3>
-                <p>${deck.description || 'Без описания'}</p>
+                <p>${deck.description || (state.settings.language === 'ru' ? 'Без описания' : 'No description')}</p>
             </div>
             <div class="deck-stats">
-                ${deck.cards.length} карточек
+                ${deck.cards.length} ${state.settings.language === 'ru' ? 'карточек' : 'cards'}
             </div>
         `;
         
@@ -98,11 +300,12 @@ function renderCardsList() {
     cardsList.innerHTML = '';
 
     if (deck.cards.length === 0) {
+        const t = translations[state.settings.language];
         cardsList.innerHTML = `
             <div class="no-decks-message">
                 <div class="icon">🃏</div>
-                <p>В этой колоде пока нет карточек</p>
-                <p style="font-size: 14px; margin-top: 8px;">Добавьте первую карточку чтобы начать обучение</p>
+                <p>${t.noCards}</p>
+                <p style="font-size: 14px; margin-top: 8px;">${t.addFirstCard}</p>
             </div>
         `;
         return;
@@ -112,13 +315,15 @@ function renderCardsList() {
         const cardElement = document.createElement('div');
         cardElement.className = 'card-item';
         
+        const t = translations[state.settings.language];
+        
         cardElement.innerHTML = `
             <div class="card-content">
                 <div class="front">${escapeHtml(card.front)}</div>
                 <div class="back">${escapeHtml(card.back)}</div>
                 <div class="card-actions">
-                    <button class="btn-edit" onclick="event.stopPropagation(); editCard('${card.id}')">✏️ Изменить</button>
-                    <button class="btn-delete" onclick="event.stopPropagation(); deleteCard('${card.id}')">🗑️ Удалить</button>
+                    <button class="btn-edit" onclick="event.stopPropagation(); editCard('${card.id}')">✏️ ${t.edit}</button>
+                    <button class="btn-delete" onclick="event.stopPropagation(); deleteCard('${card.id}')">🗑️ ${t.delete}</button>
                 </div>
             </div>
         `;
@@ -141,16 +346,18 @@ function editCard(cardId) {
     
     if (!card) return;
     
+    const t = translations[state.settings.language];
+    
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.innerHTML = `
         <div class="modal-content">
-            <h3>Редактировать карточку</h3>
-            <input type="text" id="editCardFront" value="${escapeHtml(card.front)}" placeholder="Слово/Вопрос" maxlength="50">
-            <input type="text" id="editCardBack" value="${escapeHtml(card.back)}" placeholder="Перевод/Ответ" maxlength="50">
+            <h3>${t.edit}</h3>
+            <input type="text" id="editCardFront" value="${escapeHtml(card.front)}" placeholder="${t.wordQuestion}" maxlength="50">
+            <input type="text" id="editCardBack" value="${escapeHtml(card.back)}" placeholder="${t.translationAnswer}" maxlength="50">
             <div class="form-actions">
-                <button class="secondary" onclick="closeModal()">Отмена</button>
-                <button class="primary" onclick="saveCardEdit('${cardId}')">Сохранить</button>
+                <button class="secondary" onclick="closeModal()">${t.cancel}</button>
+                <button class="primary" onclick="saveCardEdit('${cardId}')">${state.settings.language === 'ru' ? 'Сохранить' : 'Save'}</button>
             </div>
         </div>
     `;
@@ -164,7 +371,7 @@ function saveCardEdit(cardId) {
     const back = document.getElementById('editCardBack').value.trim();
     
     if (!front || !back) {
-        alert('Заполните обе стороны карточки');
+        alert(state.settings.language === 'ru' ? 'Заполните обе стороны карточки' : 'Fill both sides of the card');
         return;
     }
     
@@ -182,7 +389,8 @@ function saveCardEdit(cardId) {
 }
 
 function deleteCard(cardId) {
-    if (!confirm('Удалить эту карточку?')) return;
+    const t = translations[state.settings.language];
+    if (!confirm(state.settings.language === 'ru' ? 'Удалить эту карточку?' : 'Delete this card?')) return;
     
     const deck = state.decks.find(d => d.id === state.currentDeckId);
     deck.cards = deck.cards.filter(c => c.id !== cardId);
@@ -214,7 +422,7 @@ function createNewDeck() {
     const description = document.getElementById('newDeckDescription').value.trim();
     
     if (!name) {
-        alert('Введите название колоды');
+        alert(state.settings.language === 'ru' ? 'Введите название колоды' : 'Enter deck name');
         return;
     }
     
@@ -249,7 +457,7 @@ function createNewCard() {
     const back = document.getElementById('newCardBack').value.trim();
     
     if (!front || !back) {
-        alert('Заполните обе стороны карточки');
+        alert(state.settings.language === 'ru' ? 'Заполните обе стороны карточки' : 'Fill both sides of the card');
         return;
     }
     
@@ -294,14 +502,15 @@ function showDeckSelection() {
     const nonEmptyDecks = state.decks.filter(deck => deck.cards.length > 0);
     
     if (nonEmptyDecks.length === 0) {
+        const t = translations[state.settings.language];
         deckSelection.innerHTML = `
             <div class="no-decks-message">
                 <div class="icon">📚</div>
-                <p>Нет колод с карточками</p>
-                <p style="font-size: 14px; margin-top: 8px; margin-bottom: 16px;">Сначала создайте колоду и добавьте карточки</p>
+                <p>${state.settings.language === 'ru' ? 'Нет колод с карточками' : 'No decks with cards'}</p>
+                <p style="font-size: 14px; margin-top: 8px; margin-bottom: 16px;">${t.createFirstDeck}</p>
                 <div class="session-actions">
-                    <button class="secondary" onclick="showScreen('menuScreen')">В меню</button>
-                    <button class="primary" onclick="showScreen('decksScreen')">Создать колоду</button>
+                    <button class="secondary" onclick="showScreen('mainFunctionsScreen')">${t.backToMenu}</button>
+                    <button class="primary" onclick="showScreen('decksScreen')">${t.create}</button>
                 </div>
             </div>
         `;
@@ -313,19 +522,21 @@ function showDeckSelection() {
         optionsHtml += `
             <div class="option-button" onclick="startDeckLearning('${deck.id}')">
                 <h4>${deck.name}</h4>
-                <p>${deck.cards.length} карточек</p>
+                <p>${deck.cards.length} ${state.settings.language === 'ru' ? 'карточек' : 'cards'}</p>
                 <small>${deck.description || ''}</small>
             </div>
         `;
     });
     
+    const t = translations[state.settings.language];
+    
     deckSelection.innerHTML = `
-        <h3 style="text-align: center; margin-bottom: 20px;">🎯 Выберите колоду для изучения</h3>
+        <h3 style="text-align: center; margin-bottom: 20px;">🎯 ${state.settings.language === 'ru' ? 'Выберите колоду для изучения' : 'Choose a deck to study'}</h3>
         <div class="learn-options">
             ${optionsHtml}
         </div>
         <div class="session-actions">
-            <button class="secondary" onclick="showScreen('menuScreen')">← В меню</button>
+            <button class="secondary" onclick="showScreen('mainFunctionsScreen')">← ${t.backToMenu}</button>
         </div>
     `;
 }
@@ -409,30 +620,32 @@ function finishSession() {
     state.stats.lastStudyDate = new Date().toISOString();
     
     // Показываем статистику сессии
+    const t = translations[state.settings.language];
+    
     document.getElementById('sessionComplete').innerHTML = `
-        <h2>🎉 Сессия завершена!</h2>
+        <h2>🎉 ${t.sessionCompleted}</h2>
         <div class="session-stats">
             <div class="stat-row">
                 <div class="stat-item">
                     <div class="stat-value correct">${session.correctAnswers}</div>
-                    <div class="stat-label">Правильно</div>
+                    <div class="stat-label">${t.correct}</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value wrong">${session.wrongAnswers}</div>
-                    <div class="stat-label">Нужно повторить</div>
+                    <div class="stat-label">${t.needReview}</div>
                 </div>
             </div>
             <div class="stat-row">
                 <div class="stat-item">
                     <div class="stat-value">${Math.round((session.correctAnswers / session.cards.length) * 100)}%</div>
-                    <div class="stat-label">Успех</div>
+                    <div class="stat-label">${t.success}</div>
                 </div>
             </div>
         </div>
         <div class="session-actions">
-            <button class="secondary" onclick="showScreen('menuScreen')">В меню</button>
-            <button class="primary" onclick="restartSession()">🔄 Повторить</button>
-            <button class="primary" onclick="showDeckSelection()">📚 Другая колода</button>
+            <button class="secondary" onclick="showScreen('mainFunctionsScreen')">${t.backToMenu}</button>
+            <button class="primary" onclick="restartSession()">🔄 ${t.repeat}</button>
+            <button class="primary" onclick="showDeckSelection()">📚 ${t.anotherDeck}</button>
         </div>
     `;
     
@@ -457,10 +670,20 @@ function restartSession() {
 // Статистика
 function updateStats() {
     const totalCards = state.decks.reduce((sum, deck) => sum + deck.cards.length, 0);
+    const t = translations[state.settings.language];
     
     document.getElementById('totalCards').textContent = totalCards;
     document.getElementById('totalDecks').textContent = state.decks.length;
     document.getElementById('learnedToday').textContent = state.stats.learnedToday;
+    
+    // Обновляем заголовки статистики
+    const statLabels = document.querySelectorAll('.stat-label');
+    if (statLabels[0]) statLabels[0].textContent = t.totalCards;
+    if (statLabels[1]) statLabels[1].textContent = t.decks;
+    if (statLabels[2]) statLabels[2].textContent = t.learnedToday;
+    
+    const recentActivityTitle = document.querySelector('.recent-activity h3');
+    if (recentActivityTitle) recentActivityTitle.textContent = t.recentActivity;
     
     updateRecentActivity();
 }
@@ -469,25 +692,36 @@ function updateRecentActivity() {
     const activityList = document.getElementById('recentActivity');
     activityList.innerHTML = '';
     
-    // Добавляем создание колод
+    if (state.stats.studyHistory.length === 0) {
+        const t = translations[state.settings.language];
+        activityList.innerHTML = `
+            <div class="no-decks-message">
+                <div class="icon">📊</div>
+                <p>${state.settings.language === 'ru' ? 'Пока нет истории изучения' : 'No study history yet'}</p>
+                <p style="font-size: 14px; margin-top: 8px;">${state.settings.language === 'ru' ? 'Начните учить слова чтобы увидеть статистику' : 'Start learning words to see statistics'}</p>
+            </div>
+        `;
+        return;
+    }
+    
     state.decks.slice(-3).reverse().forEach(deck => {
         const activityItem = document.createElement('div');
         activityItem.className = 'activity-item';
-        activityItem.textContent = `Создана колода "${deck.name}"`;
+        activityItem.textContent = `${state.settings.language === 'ru' ? 'Создана колода' : 'Created deck'} "${deck.name}"`;
         activityList.appendChild(activityItem);
     });
     
     if (state.stats.lastStudyDate) {
         const activityItem = document.createElement('div');
         activityItem.className = 'activity-item';
-        activityItem.textContent = `Изучено ${state.stats.learnedToday} слов сегодня`;
+        activityItem.textContent = `${state.settings.language === 'ru' ? 'Изучено' : 'Learned'} ${state.stats.learnedToday} ${state.settings.language === 'ru' ? 'слов сегодня' : 'words today'}`;
         activityList.appendChild(activityItem);
     }
     
     if (state.stats.sessionsCompleted) {
         const activityItem = document.createElement('div');
         activityItem.className = 'activity-item';
-        activityItem.textContent = `Завершено сессий: ${state.stats.sessionsCompleted}`;
+        activityItem.textContent = `${state.settings.language === 'ru' ? 'Завершено сессий' : 'Sessions completed'}: ${state.stats.sessionsCompleted}`;
         activityList.appendChild(activityItem);
     }
 }
@@ -496,7 +730,8 @@ function updateRecentActivity() {
 function saveData() {
     const data = {
         decks: state.decks,
-        stats: state.stats
+        stats: state.stats,
+        settings: state.settings
     };
     localStorage.setItem('litherium_data', JSON.stringify(data));
 }
@@ -512,6 +747,7 @@ function loadData() {
             lastStudyDate: null,
             sessionsCompleted: 0
         };
+        state.settings = data.settings || { language: 'ru' };
     }
     
     // Сбрасываем счетчик изученных сегодня если это новый день
@@ -526,13 +762,13 @@ function initDemoData() {
     if (state.decks.length === 0) {
         const demoDeck = {
             id: 'demo',
-            name: 'Английские слова',
-            description: 'Базовые слова для начала',
+            name: state.settings.language === 'ru' ? 'Английские слова' : 'English Words',
+            description: state.settings.language === 'ru' ? 'Базовые слова для начала' : 'Basic words to start with',
             cards: [
-                { id: '1', front: 'Hello', back: 'Привет', known: false },
-                { id: '2', front: 'Goodbye', back: 'До свидания', known: false },
-                { id: '3', front: 'Thank you', back: 'Спасибо', known: false },
-                { id: '4', front: 'Please', back: 'Пожалуйста', known: false }
+                { id: '1', front: 'Hello', back: state.settings.language === 'ru' ? 'Привет' : 'Hi', known: false },
+                { id: '2', front: 'Goodbye', back: state.settings.language === 'ru' ? 'До свидания' : 'Goodbye', known: false },
+                { id: '3', front: 'Thank you', back: state.settings.language === 'ru' ? 'Спасибо' : 'Thanks', known: false },
+                { id: '4', front: 'Please', back: state.settings.language === 'ru' ? 'Пожалуйста' : 'Please', known: false }
             ],
             createdAt: new Date().toISOString()
         };

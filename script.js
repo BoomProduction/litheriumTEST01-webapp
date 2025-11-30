@@ -762,13 +762,13 @@ function initDemoData() {
     if (state.decks.length === 0) {
         const demoDeck = {
             id: 'demo',
-            name: state.settings.language === 'ru' ? 'Английские слова' : 'English Words',
-            description: state.settings.language === 'ru' ? 'Базовые слова для начала' : 'Basic words to start with',
+            name: state.settings.language === 'ru' ? 'Пару примеров того, как использовать' : 'English Words',
+            description: state.settings.language === 'ru' ? 'Создано для понимания принципа работы.' : 'Basic words to start with',
             cards: [
-                { id: '1', front: 'Hello', back: state.settings.language === 'ru' ? 'Привет' : 'Hi', known: false },
-                { id: '2', front: 'Goodbye', back: state.settings.language === 'ru' ? 'До свидания' : 'Goodbye', known: false },
-                { id: '3', front: 'Thank you', back: state.settings.language === 'ru' ? 'Спасибо' : 'Thanks', known: false },
-                { id: '4', front: 'Please', back: state.settings.language === 'ru' ? 'Пожалуйста' : 'Please', known: false }
+                { id: '1', front: '(Здесь должно находиться Ваше англ. слово)', back: state.settings.language === 'ru' ? '(Перевод на Вашем языке)' : 'Hi', known: false },
+                { id: '2', front: 'Это мини-приложение можно использовать ещё для...', back: state.settings.language === 'ru' ? 'заучивания определенных терминов.' : 'Hi', known: false },
+                { id: '3', front: 'Hello world', back: state.settings.language === 'ru' ? 'Привет, мир' : 'Goodbye', known: false },
+                { id: '4', front: 'Чтобы удалить эту колоду карт — ...', back: state.settings.language === 'ru' ? 'перейдите в настройки и выберите нужный Вам пункт.' : 'Thanks', known: false }
             ],
             createdAt: new Date().toISOString()
         };
@@ -776,3 +776,4 @@ function initDemoData() {
         saveData();
     }
 }
+

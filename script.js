@@ -117,8 +117,8 @@ function renderCardsList() {
                 <div class="front">${escapeHtml(card.front)}</div>
                 <div class="back">${escapeHtml(card.back)}</div>
                 <div class="card-actions">
-                    <button class="btn-edit" onclick="editCard('${card.id}')">✏️ Изменить</button>
-                    <button class="btn-delete" onclick="deleteCard('${card.id}')">🗑️ Удалить</button>
+                    <button class="btn-edit" onclick="event.stopPropagation(); editCard('${card.id}')">✏️ Изменить</button>
+                    <button class="btn-delete" onclick="event.stopPropagation(); deleteCard('${card.id}')">🗑️ Удалить</button>
                 </div>
             </div>
         `;

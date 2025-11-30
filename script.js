@@ -12,7 +12,10 @@ let state = {
         totalLearned: 0,
         learnedToday: 0,
         lastStudyDate: null,
-        sessionsCompleted: 0
+        sessionsCompleted: 0,
+        totalAnswers: 0,
+        correctAnswers: 0,
+        studyHistory: []
     }
 };
 
@@ -38,7 +41,7 @@ function showScreen(screenName) {
     } else if (screenName === 'statsScreen') {
         updateStats();
     } else if (screenName === 'learnScreen') {
-        showDeckSelection();
+        showStudyMethodSelection();
     }
 }
 
@@ -261,7 +264,9 @@ function createNewCard() {
         front: front,
         back: back,
         createdAt: new Date().toISOString(),
-        known: false
+        known: false,
+        reviewCount: 0,
+        lastReviewed: null
     };
     
     deck.cards.push(newCard);
@@ -270,8 +275,8 @@ function createNewCard() {
     renderCardsList();
 }
 
-// Обучение - выбор колоды
-function showDeckSelection() {
+// Выбор метода изучения
+function showStudyMethodSelection() {
     const learnScreen = document.getElementById('learnScreen');
     
     // Скрываем элементы обучения
@@ -280,21 +285,18 @@ function showDeckSelection() {
     document.querySelector('.learn-controls').classList.add('hidden');
     document.getElementById('sessionComplete').classList.add('hidden');
     
-    // Удаляем старый выбор колоды если есть
-    const oldDeckSelection = document.querySelector('.deck-selection');
-    if (oldDeckSelection) {
-        oldDeckSelection.remove();
+    // Удаляем старый выбор если есть
+    const oldSelection = document.querySelector('.study-method-selector');
+    if (oldSelection) {
+        oldSelection.remove();
     }
-    
-    // Создаем новый выбор колоды
-    const deckSelection = document.createElement('div');
-    deckSelection.className = 'deck-selection';
-    learnScreen.insertBefore(deckSelection, learnScreen.firstChild);
     
     const nonEmptyDecks = state.decks.filter(deck => deck.cards.length > 0);
     
     if (nonEmptyDecks.length === 0) {
-        deckSelection.innerHTML = `
+        const methodSelector = document.createElement('div');
+        methodSelector.className = 'study-method-selector';
+        methodSelector.innerHTML = `
             <div class="no-decks-message">
                 <div class="icon">📚</div>
                 <p>Нет колод с карточками</p>
@@ -305,13 +307,71 @@ function showDeckSelection() {
                 </div>
             </div>
         `;
+        learnScreen.insertBefore(methodSelector, learnScreen.firstChild);
         return;
     }
+    
+    const methodSelector = document.createElement('div');
+    methodSelector.className = 'study-method-selector';
+    methodSelector.innerHTML = `
+        <h3 style="text-align: center; margin-bottom: 20px;">🎯 Выберите метод изучения</h3>
+        <div class="method-options">
+            <div class="method-option" onclick="selectStudyMethod('standard')">
+                <div class="method-icon">🔁</div>
+                <div class="method-title">Стандартный</div>
+                <div class="method-description">Все карточки по одному разу в случайном порядке</div>
+            </div>
+            <div class="method-option" onclick="selectStudyMethod('repeat-unknown')">
+                <div class="method-icon">🔄</div>
+                <div class="method-title">С повторением неизвестных</div>
+                <div class="method-description">Неизвестные слова добавляются в конец для повторения</div>
+            </div>
+        </div>
+        <div class="session-actions" style="margin-top: 20px;">
+            <button class="secondary" onclick="showScreen('menuScreen')">← В меню</button>
+        </div>
+    `;
+    
+    learnScreen.insertBefore(methodSelector, learnScreen.firstChild);
+}
+
+let selectedStudyMethod = 'standard';
+
+function selectStudyMethod(method) {
+    selectedStudyMethod = method;
+    
+    // Убираем выделение со всех методов
+    document.querySelectorAll('.method-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    // Добавляем выделение выбранному методу
+    event.currentTarget.classList.add('selected');
+    
+    // Показываем выбор колоды для выбранного метода
+    setTimeout(() => showDeckSelection(), 300);
+}
+
+// Обучение - выбор колоды
+function showDeckSelection() {
+    const learnScreen = document.getElementById('learnScreen');
+    
+    // Удаляем старый выбор колоды если есть
+    const oldDeckSelection = document.querySelector('.deck-selection');
+    if (oldDeckSelection) {
+        oldDeckSelection.remove();
+    }
+    
+    const deckSelection = document.createElement('div');
+    deckSelection.className = 'deck-selection';
+    learnScreen.insertBefore(deckSelection, learnScreen.firstChild);
+    
+    const nonEmptyDecks = state.decks.filter(deck => deck.cards.length > 0);
     
     let optionsHtml = '';
     nonEmptyDecks.forEach(deck => {
         optionsHtml += `
-            <div class="option-button" onclick="startDeckLearning('${deck.id}')">
+            <div class="option-button" onclick="startDeckLearning('${deck.id}', '${selectedStudyMethod}')">
                 <h4>${deck.name}</h4>
                 <p>${deck.cards.length} карточек</p>
                 <small>${deck.description || ''}</small>
@@ -320,34 +380,52 @@ function showDeckSelection() {
     });
     
     deckSelection.innerHTML = `
-        <h3 style="text-align: center; margin-bottom: 20px;">🎯 Выберите колоду для изучения</h3>
+        <h3 style="text-align: center; margin-bottom: 20px;">📚 Выберите колоду</h3>
         <div class="learn-options">
             ${optionsHtml}
         </div>
         <div class="session-actions">
-            <button class="secondary" onclick="showScreen('menuScreen')">← В меню</button>
+            <button class="secondary" onclick="showStudyMethodSelection()">← Назад к методам</button>
         </div>
     `;
 }
 
-function startDeckLearning(deckId) {
+function startDeckLearning(deckId, method) {
     const deck = state.decks.find(d => d.id === deckId);
     if (!deck || deck.cards.length === 0) return;
     
     state.currentDeckId = deckId;
-    state.currentSession = {
-        deckId: deckId,
-        currentCardIndex: 0,
-        correctAnswers: 0,
-        wrongAnswers: 0,
-        cards: [...deck.cards].sort(() => Math.random() - 0.5)
-    };
     
-    // Удаляем выбор колоды
-    const deckSelection = document.querySelector('.deck-selection');
-    if (deckSelection) {
-        deckSelection.remove();
+    // Создаем сессию в зависимости от выбранного метода
+    if (method === 'repeat-unknown') {
+        state.currentSession = {
+            deckId: deckId,
+            currentCardIndex: 0,
+            correctAnswers: 0,
+            wrongAnswers: 0,
+            method: 'repeat-unknown',
+            cards: [...deck.cards].sort(() => Math.random() - 0.5),
+            wrongCards: [], // Карточки, которые нужно повторить
+            originalLength: deck.cards.length
+        };
+    } else {
+        state.currentSession = {
+            deckId: deckId,
+            currentCardIndex: 0,
+            correctAnswers: 0,
+            wrongAnswers: 0,
+            method: 'standard',
+            cards: [...deck.cards].sort(() => Math.random() - 0.5),
+            learnedWords: [],
+            reviewWords: []
+        };
     }
+    
+    // Удаляем выбор колоды и метода
+    const deckSelection = document.querySelector('.deck-selection');
+    const methodSelector = document.querySelector('.study-method-selector');
+    if (deckSelection) deckSelection.remove();
+    if (methodSelector) methodSelector.remove();
     
     // Показываем элементы обучения
     document.querySelector('.learn-header').classList.remove('hidden');
@@ -359,7 +437,19 @@ function startDeckLearning(deckId) {
 
 function showNextCard() {
     const session = state.currentSession;
-    if (!session || session.currentCardIndex >= session.cards.length) {
+    if (!session) return;
+    
+    // Для метода с повторением: если дошли до конца, добавляем неправильные карточки
+    if (session.method === 'repeat-unknown' && 
+        session.currentCardIndex >= session.cards.length && 
+        session.wrongCards.length > 0) {
+        
+        session.cards = session.cards.concat(session.wrongCards);
+        session.wrongCards = [];
+        session.currentCardIndex = session.originalLength; // Продолжаем с неправильных карточек
+    }
+    
+    if (session.currentCardIndex >= session.cards.length) {
         finishSession();
         return;
     }
@@ -372,10 +462,14 @@ function showNextCard() {
     document.getElementById('learnCard').classList.remove('flipped');
     
     // Обновляем прогресс
-    const progress = (session.currentCardIndex / session.cards.length) * 100;
+    const totalCards = session.method === 'repeat-unknown' ? 
+        session.originalLength + session.wrongCards.length : 
+        session.cards.length;
+        
+    const progress = (session.currentCardIndex / totalCards) * 100;
     document.getElementById('progressFill').style.width = `${progress}%`;
     document.getElementById('progressText').textContent = 
-        `${session.currentCardIndex + 1}/${session.cards.length}`;
+        `${session.currentCardIndex + 1}/${totalCards}`;
 }
 
 function flipCard() {
@@ -386,11 +480,45 @@ function answerCard(isCorrect) {
     const session = state.currentSession;
     if (!session) return;
     
+    const currentCard = session.cards[session.currentCardIndex];
+    
     if (isCorrect) {
         session.correctAnswers++;
         state.stats.learnedToday++;
+        
+        // Добавляем в изученные слова
+        if (!session.learnedWords) session.learnedWords = [];
+        if (!session.learnedWords.find(w => w.id === currentCard.id)) {
+            session.learnedWords.push({
+                id: currentCard.id,
+                front: currentCard.front,
+                back: currentCard.back
+            });
+        }
     } else {
         session.wrongAnswers++;
+        
+        // Для метода с повторением добавляем карточку в конец
+        if (session.method === 'repeat-unknown') {
+            session.wrongCards.push(currentCard);
+        }
+        
+        // Добавляем в слова для повторения
+        if (!session.reviewWords) session.reviewWords = [];
+        if (!session.reviewWords.find(w => w.id === currentCard.id)) {
+            session.reviewWords.push({
+                id: currentCard.id,
+                front: currentCard.front,
+                back: currentCard.back
+            });
+        }
+    }
+    
+    // Обновляем статистику карточки
+    currentCard.reviewCount = (currentCard.reviewCount || 0) + 1;
+    currentCard.lastReviewed = new Date().toISOString();
+    if (isCorrect) {
+        currentCard.known = true;
     }
     
     session.currentCardIndex++;
@@ -403,13 +531,32 @@ function finishSession() {
     document.getElementById('sessionComplete').classList.remove('hidden');
     document.querySelector('.learn-controls').classList.add('hidden');
     
-    // Обновляем статистику
+    // Обновляем глобальную статистику
     state.stats.totalLearned += session.correctAnswers;
     state.stats.sessionsCompleted = (state.stats.sessionsCompleted || 0) + 1;
+    state.stats.totalAnswers = (state.stats.totalAnswers || 0) + session.correctAnswers + session.wrongAnswers;
+    state.stats.correctAnswers = (state.stats.correctAnswers || 0) + session.correctAnswers;
     state.stats.lastStudyDate = new Date().toISOString();
     
-    // Показываем статистику сессии
-    document.getElementById('sessionComplete').innerHTML = `
+    // Добавляем в историю изучения
+    state.stats.studyHistory.unshift({
+        date: new Date().toISOString(),
+        deckId: session.deckId,
+        method: session.method,
+        correct: session.correctAnswers,
+        wrong: session.wrongAnswers,
+        total: session.method === 'repeat-unknown' ? session.originalLength : session.cards.length,
+        learnedWords: session.learnedWords || [],
+        reviewWords: session.reviewWords || []
+    });
+    
+    // Ограничиваем историю последними 10 сессиями
+    if (state.stats.studyHistory.length > 10) {
+        state.stats.studyHistory = state.stats.studyHistory.slice(0, 10);
+    }
+    
+    // Формируем HTML для завершения сессии
+    let sessionHTML = `
         <h2>🎉 Сессия завершена!</h2>
         <div class="session-stats">
             <div class="stat-row">
@@ -424,72 +571,144 @@ function finishSession() {
             </div>
             <div class="stat-row">
                 <div class="stat-item">
-                    <div class="stat-value">${Math.round((session.correctAnswers / session.cards.length) * 100)}%</div>
+                    <div class="stat-value">${Math.round((session.correctAnswers / (session.method === 'repeat-unknown' ? session.originalLength : session.cards.length)) * 100)}%</div>
                     <div class="stat-label">Успех</div>
                 </div>
             </div>
+    `;
+    
+    // Показываем детали изученных слов
+    if (session.learnedWords && session.learnedWords.length > 0) {
+        sessionHTML += `
+            <div class="session-details">
+                <h4>✅ Изученные слова (${session.learnedWords.length})</h4>
+                <div class="learned-words-list">
+                    ${session.learnedWords.map(word => 
+                        `<div class="word-item"><strong>${escapeHtml(word.front)}</strong> - ${escapeHtml(word.back)}</div>`
+                    ).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Показываем слова для повторения
+    if (session.reviewWords && session.reviewWords.length > 0) {
+        sessionHTML += `
+            <div class="session-details">
+                <h4>🔄 Слова для повторения (${session.reviewWords.length})</h4>
+                <div class="review-words-details">
+                    ${session.reviewWords.map(word => 
+                        `<div class="word-item"><strong>${escapeHtml(word.front)}</strong> - ${escapeHtml(word.back)}</div>`
+                    ).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    sessionHTML += `
         </div>
         <div class="session-actions">
             <button class="secondary" onclick="showScreen('menuScreen')">В меню</button>
             <button class="primary" onclick="restartSession()">🔄 Повторить</button>
-            <button class="primary" onclick="showDeckSelection()">📚 Другая колода</button>
+            <button class="primary" onclick="showStudyMethodSelection()">📚 Другая колода</button>
         </div>
     `;
     
+    document.getElementById('sessionComplete').innerHTML = sessionHTML;
     saveData();
 }
 
 function restartSession() {
     if (!state.currentSession) return;
     
-    // Сбрасываем сессию с теми же карточками
-    state.currentSession.currentCardIndex = 0;
-    state.currentSession.correctAnswers = 0;
-    state.currentSession.wrongAnswers = 0;
-    state.currentSession.cards = [...state.currentSession.cards].sort(() => Math.random() - 0.5);
+    const deck = state.decks.find(d => d.id === state.currentSession.deckId);
+    if (!deck) return;
     
-    document.getElementById('sessionComplete').classList.add('hidden');
-    document.querySelector('.learn-controls').classList.remove('hidden');
-    
-    showNextCard();
+    // Перезапускаем сессию с теми же настройками
+    startDeckLearning(state.currentSession.deckId, state.currentSession.method);
 }
 
 // Статистика
 function updateStats() {
     const totalCards = state.decks.reduce((sum, deck) => sum + deck.cards.length, 0);
+    const successRate = state.stats.totalAnswers > 0 ? 
+        Math.round((state.stats.correctAnswers / state.stats.totalAnswers) * 100) : 0;
     
     document.getElementById('totalCards').textContent = totalCards;
     document.getElementById('totalDecks').textContent = state.decks.length;
     document.getElementById('learnedToday').textContent = state.stats.learnedToday;
+    document.getElementById('totalLearned').textContent = state.stats.totalLearned;
+    document.getElementById('sessionsCompleted').textContent = state.stats.sessionsCompleted;
+    document.getElementById('successRate').textContent = successRate + '%';
     
+    updateDecksProgress();
     updateRecentActivity();
+}
+
+function updateDecksProgress() {
+    const decksProgress = document.getElementById('decksProgress');
+    decksProgress.innerHTML = '';
+    
+    state.decks.forEach(deck => {
+        const totalCards = deck.cards.length;
+        const knownCards = deck.cards.filter(card => card.known).length;
+        const progressPercent = totalCards > 0 ? Math.round((knownCards / totalCards) * 100) : 0;
+        
+        const progressItem = document.createElement('div');
+        progressItem.className = 'deck-progress-item';
+        progressItem.innerHTML = `
+            <div class="deck-progress-header">
+                <div class="deck-progress-name">${deck.name}</div>
+                <div class="deck-progress-stats">${knownCards}/${totalCards}</div>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" style="width: ${progressPercent}%"></div>
+            </div>
+        `;
+        
+        decksProgress.appendChild(progressItem);
+    });
 }
 
 function updateRecentActivity() {
     const activityList = document.getElementById('recentActivity');
     activityList.innerHTML = '';
     
-    // Добавляем создание колод
-    state.decks.slice(-3).reverse().forEach(deck => {
+    if (state.stats.studyHistory.length === 0) {
+        activityList.innerHTML = `
+            <div class="no-decks-message">
+                <div class="icon">📊</div>
+                <p>Пока нет истории изучения</p>
+                <p style="font-size: 14px; margin-top: 8px;">Начните учить слова чтобы увидеть статистику</p>
+            </div>
+        `;
+        return;
+    }
+    
+    state.stats.studyHistory.forEach(session => {
+        const deck = state.decks.find(d => d.id === session.deckId);
+        const deckName = deck ? deck.name : 'Неизвестная колода';
+        const date = new Date(session.date).toLocaleDateString('ru-RU');
+        const successRate = Math.round((session.correct / session.total) * 100);
+        
         const activityItem = document.createElement('div');
         activityItem.className = 'activity-item';
-        activityItem.textContent = `Создана колода "${deck.name}"`;
+        activityItem.innerHTML = `
+            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 8px;">
+                <strong>${deckName}</strong>
+                <small style="color: var(--secondary-color);">${date}</small>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--secondary-color);">
+                <span>✅ ${session.correct} | ❌ ${session.wrong}</span>
+                <span>${successRate}% успеха</span>
+            </div>
+            <div style="font-size: 11px; color: var(--secondary-color); margin-top: 4px;">
+                Метод: ${session.method === 'repeat-unknown' ? 'С повторением' : 'Стандартный'}
+            </div>
+        `;
+        
         activityList.appendChild(activityItem);
     });
-    
-    if (state.stats.lastStudyDate) {
-        const activityItem = document.createElement('div');
-        activityItem.className = 'activity-item';
-        activityItem.textContent = `Изучено ${state.stats.learnedToday} слов сегодня`;
-        activityList.appendChild(activityItem);
-    }
-    
-    if (state.stats.sessionsCompleted) {
-        const activityItem = document.createElement('div');
-        activityItem.className = 'activity-item';
-        activityItem.textContent = `Завершено сессий: ${state.stats.sessionsCompleted}`;
-        activityList.appendChild(activityItem);
-    }
 }
 
 // Сохранение и загрузка данных
@@ -510,7 +729,10 @@ function loadData() {
             totalLearned: 0, 
             learnedToday: 0, 
             lastStudyDate: null,
-            sessionsCompleted: 0
+            sessionsCompleted: 0,
+            totalAnswers: 0,
+            correctAnswers: 0,
+            studyHistory: []
         };
     }
     
@@ -529,14 +751,58 @@ function initDemoData() {
             name: 'Английские слова',
             description: 'Базовые слова для начала',
             cards: [
-                { id: '1', front: 'Hello', back: 'Привет', known: false },
-                { id: '2', front: 'Goodbye', back: 'До свидания', known: false },
-                { id: '3', front: 'Thank you', back: 'Спасибо', known: false },
-                { id: '4', front: 'Please', back: 'Пожалуйста', known: false }
+                { id: '1', front: 'Hello', back: 'Привет', known: false, reviewCount: 0 },
+                { id: '2', front: 'Goodbye', back: 'До свидания', known: false, reviewCount: 0 },
+                { id: '3', front: 'Thank you', back: 'Спасибо', known: false, reviewCount: 0 },
+                { id: '4', front: 'Please', back: 'Пожалуйста', known: false, reviewCount: 0 }
             ],
             createdAt: new Date().toISOString()
         };
         state.decks.push(demoDeck);
         saveData();
     }
+}
+
+// Информация о подписке на ТГК (для обсуждения)
+function checkSubscription() {
+    /* 
+    Для реализации проверки подписки на ТГК нужно:
+    
+    1. Создать бота с функцией проверки подписок
+    2. В настройках бота добавить канал в список каналов для проверки
+    3. Использовать метод Telegram Bot API: getChatMember
+    
+    Пример реализации:
+    
+    async function checkChannelSubscription(userId) {
+        const channelUsername = '@your_channel'; // Ваш ТГК
+        try {
+            const response = await fetch(`/botAPI/getChatMember`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: channelUsername,
+                    user_id: userId
+                })
+            });
+            const data = await response.json();
+            return data.result.status === 'member' || 
+                   data.result.status === 'administrator' || 
+                   data.result.status === 'creator';
+        } catch (error) {
+            console.error('Ошибка проверки подписки:', error);
+            return false;
+        }
+    }
+    
+    // Использование:
+    const user = Telegram.WebApp.initDataUnsafe.user;
+    if (user) {
+        checkChannelSubscription(user.id).then(isSubscribed => {
+            if (!isSubscribed) {
+                showSubscriptionRequiredScreen();
+            }
+        });
+    }
+    */
 }

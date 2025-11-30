@@ -37,6 +37,8 @@ function showScreen(screenName) {
         renderDecksList();
     } else if (screenName === 'statsScreen') {
         updateStats();
+    } else if (screenName === 'learnScreen') {
+        showDeckSelection();
     }
 }
 
@@ -268,82 +270,7 @@ function createNewCard() {
     renderCardsList();
 }
 
-// Обучение
-function startLearning() {
-    // Находим первую непустую колоду
-    const deckWithCards = state.decks.find(deck => deck.cards.length > 0);
-    
-    if (!deckWithCards) {
-        alert('Сначала создайте колоду с карточками!');
-        showScreen('decksScreen');
-        return;
-    }
-    
-    state.currentDeckId = deckWithCards.id;
-    state.currentSession = {
-        deckId: deckWithCards.id,
-        currentCardIndex: 0,
-        correctAnswers: 0,
-        wrongAnswers: 0,
-        cards: [...deckWithCards.cards].sort(() => Math.random() - 0.5) // Перемешиваем карточки
-    };
-    
-    showScreen('learnScreen');
-    showNextCard();
-}
-
-function showNextCard() {
-    const session = state.currentSession;
-    if (!session || session.currentCardIndex >= session.cards.length) {
-        finishSession();
-        return;
-    }
-    
-    const currentCard = session.cards[session.currentCardIndex];
-    document.getElementById('cardFront').innerHTML = `<h3>${escapeHtml(currentCard.front)}</h3>`;
-    document.getElementById('cardBack').innerHTML = `<h3>${escapeHtml(currentCard.back)}</h3>`;
-    document.getElementById('learnCard').classList.remove('flipped');
-    
-    // Обновляем прогресс
-    const progress = (session.currentCardIndex / session.cards.length) * 100;
-    document.getElementById('progressFill').style.width = `${progress}%`;
-    document.getElementById('progressText').textContent = 
-        `${session.currentCardIndex + 1}/${session.cards.length}`;
-}
-
-function flipCard() {
-    document.getElementById('learnCard').classList.toggle('flipped');
-}
-
-function answerCard(isCorrect) {
-    const session = state.currentSession;
-    if (!session) return;
-    
-    if (isCorrect) {
-        session.correctAnswers++;
-        state.stats.learnedToday++;
-    } else {
-        session.wrongAnswers++;
-    }
-    
-    session.currentCardIndex++;
-    showNextCard();
-}
-
-function finishSession() {
-    const session = state.currentSession;
-    
-    document.getElementById('sessionComplete').classList.remove('hidden');
-    document.querySelector('.learn-controls').classList.add('hidden');
-    
-    // Обновляем статистику
-    state.stats.totalLearned += session.correctAnswers;
-    state.stats.sessionsCompleted = (state.stats.sessionsCompleted || 0) + 1;
-    state.stats.lastStudyDate = new Date().toISOString();
-    
-    saveData();
-}
-
+// Обучение - выбор колоды
 function showDeckSelection() {
     const learnScreen = document.getElementById('learnScreen');
     
@@ -401,8 +328,6 @@ function showDeckSelection() {
             <button class="secondary" onclick="showScreen('menuScreen')">← В меню</button>
         </div>
     `;
-    
-    showScreen('learnScreen');
 }
 
 function startDeckLearning(deckId) {
@@ -427,6 +352,103 @@ function startDeckLearning(deckId) {
     // Показываем элементы обучения
     document.querySelector('.learn-header').classList.remove('hidden');
     document.querySelector('.card-container').classList.remove('hidden');
+    document.querySelector('.learn-controls').classList.remove('hidden');
+    
+    showNextCard();
+}
+
+function showNextCard() {
+    const session = state.currentSession;
+    if (!session || session.currentCardIndex >= session.cards.length) {
+        finishSession();
+        return;
+    }
+    
+    const currentCard = session.cards[session.currentCardIndex];
+    document.getElementById('cardFront').innerHTML = `<h3>${escapeHtml(currentCard.front)}</h3>`;
+    document.getElementById('cardBack').innerHTML = `<h3>${escapeHtml(currentCard.back)}</h3>`;
+    
+    // Сбрасываем переворот карточки
+    document.getElementById('learnCard').classList.remove('flipped');
+    
+    // Обновляем прогресс
+    const progress = (session.currentCardIndex / session.cards.length) * 100;
+    document.getElementById('progressFill').style.width = `${progress}%`;
+    document.getElementById('progressText').textContent = 
+        `${session.currentCardIndex + 1}/${session.cards.length}`;
+}
+
+function flipCard() {
+    document.getElementById('learnCard').classList.toggle('flipped');
+}
+
+function answerCard(isCorrect) {
+    const session = state.currentSession;
+    if (!session) return;
+    
+    if (isCorrect) {
+        session.correctAnswers++;
+        state.stats.learnedToday++;
+    } else {
+        session.wrongAnswers++;
+    }
+    
+    session.currentCardIndex++;
+    showNextCard();
+}
+
+function finishSession() {
+    const session = state.currentSession;
+    
+    document.getElementById('sessionComplete').classList.remove('hidden');
+    document.querySelector('.learn-controls').classList.add('hidden');
+    
+    // Обновляем статистику
+    state.stats.totalLearned += session.correctAnswers;
+    state.stats.sessionsCompleted = (state.stats.sessionsCompleted || 0) + 1;
+    state.stats.lastStudyDate = new Date().toISOString();
+    
+    // Показываем статистику сессии
+    document.getElementById('sessionComplete').innerHTML = `
+        <h2>🎉 Сессия завершена!</h2>
+        <div class="session-stats">
+            <div class="stat-row">
+                <div class="stat-item">
+                    <div class="stat-value correct">${session.correctAnswers}</div>
+                    <div class="stat-label">Правильно</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value wrong">${session.wrongAnswers}</div>
+                    <div class="stat-label">Нужно повторить</div>
+                </div>
+            </div>
+            <div class="stat-row">
+                <div class="stat-item">
+                    <div class="stat-value">${Math.round((session.correctAnswers / session.cards.length) * 100)}%</div>
+                    <div class="stat-label">Успех</div>
+                </div>
+            </div>
+        </div>
+        <div class="session-actions">
+            <button class="secondary" onclick="showScreen('menuScreen')">В меню</button>
+            <button class="primary" onclick="restartSession()">🔄 Повторить</button>
+            <button class="primary" onclick="showDeckSelection()">📚 Другая колода</button>
+        </div>
+    `;
+    
+    saveData();
+}
+
+function restartSession() {
+    if (!state.currentSession) return;
+    
+    // Сбрасываем сессию с теми же карточками
+    state.currentSession.currentCardIndex = 0;
+    state.currentSession.correctAnswers = 0;
+    state.currentSession.wrongAnswers = 0;
+    state.currentSession.cards = [...state.currentSession.cards].sort(() => Math.random() - 0.5);
+    
+    document.getElementById('sessionComplete').classList.add('hidden');
     document.querySelector('.learn-controls').classList.remove('hidden');
     
     showNextCard();

@@ -1,18 +1,30 @@
-// Инициализируем Telegram WebApp
-let tg = window.Telegram.WebApp;
-tg.expand(); // Раскрываем WebApp на весь экран
+// Инициализация Telegram WebApp
+const tg = window.Telegram.WebApp;
+tg.expand();
 
-// Получаем данные пользователя из Telegram
-let user = tg.initDataUnsafe?.user;
-console.log("Пользователь:", user);
 
-// Пример обработки кнопки
-document.getElementById('getData').addEventListener('click', () => {
-    document.getElementById('data').innerHTML = `<p>Привет, ${user?.first_name || 'друг'}! Вот твои слова...</p>`;
-});
+// ===== ХРАНИЛИЩЕ КАРТОЧЕК =====
+let cards = JSON.parse(localStorage.getItem("cards") || "[]");
 
-// Кнопка "Назад" или "Закрыть"
-tg.BackButton.show();
-tg.BackButton.onClick(() => {
-    tg.close();
-});
+function saveCards() {
+    localStorage.setItem("cards", JSON.stringify(cards));
+}
+
+function renderCards() {
+    const cardList = document.getElementById("card-list");
+    cardList.innerHTML = "";
+
+    if (cards.length === 0) {
+        cardList.innerHTML = "<p>Пока нет карточек. Добавь первую!</p>";
+        return;
+    }
+
+    cards.forEach((card, index) => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `<b>${card.front}</b><br>${card.back}`;
+        cardList.appendChild(div);
+    });
+}
+
+renderCards();

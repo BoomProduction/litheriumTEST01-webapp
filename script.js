@@ -11,7 +11,8 @@ let state = {
     stats: {
         totalLearned: 0,
         learnedToday: 0,
-        lastStudyDate: null
+        lastStudyDate: null,
+        sessionsCompleted: 0
     }
 };
 
@@ -20,16 +21,15 @@ document.addEventListener('DOMContentLoaded', function() {
     loadData();
     updateStats();
     showScreen('menuScreen');
+    initDemoData();
 });
 
 // Управление экранами
 function showScreen(screenName) {
-    // Скрыть все экраны
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
     });
     
-    // Показать нужный экран
     document.getElementById(screenName).classList.add('active');
     
     // Специальные действия для экранов
@@ -37,6 +37,8 @@ function showScreen(screenName) {
         renderDecksList();
     } else if (screenName === 'statsScreen') {
         updateStats();
+    } else if (screenName === 'learnScreen') {
+        showDeckSelection();
     }
 }
 
@@ -86,7 +88,7 @@ function openDeck(deckId) {
     showScreen('cardsScreen');
 }
 
-// Рендер списка карточек
+// Рендер списка карточек с кнопками редактирования
 function renderCardsList() {
     const cardsList = document.getElementById('cardsList');
     const deck = state.decks.find(d => d.id === state.currentDeckId);
@@ -112,13 +114,87 @@ function renderCardsList() {
         
         cardElement.innerHTML = `
             <div class="card-content">
-                <div class="front">${card.front}</div>
-                <div class="back">${card.back}</div>
+                <div class="front">${escapeHtml(card.front)}</div>
+                <div class="back">${escapeHtml(card.back)}</div>
+                <div class="card-actions">
+                    <button class="btn-edit" onclick="editCard('${card.id}')">✏️ Изменить</button>
+                    <button class="btn-delete" onclick="deleteCard('${card.id}')">🗑️ Удалить</button>
+                </div>
             </div>
         `;
         
         cardsList.appendChild(cardElement);
     });
+}
+
+// Экранирование HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Редактирование карточки
+function editCard(cardId) {
+    const deck = state.decks.find(d => d.id === state.currentDeckId);
+    const card = deck.cards.find(c => c.id === cardId);
+    
+    if (!card) return;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>Редактировать карточку</h3>
+            <input type="text" id="editCardFront" value="${escapeHtml(card.front)}" placeholder="Слово/Вопрос" maxlength="50">
+            <input type="text" id="editCardBack" value="${escapeHtml(card.back)}" placeholder="Перевод/Ответ" maxlength="50">
+            <div class="form-actions">
+                <button onclick="closeModal()">Отмена</button>
+                <button class="primary" onclick="saveCardEdit('${cardId}')">Сохранить</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    document.getElementById('editCardFront').focus();
+}
+
+function saveCardEdit(cardId) {
+    const front = document.getElementById('editCardFront').value.trim();
+    const back = document.getElementById('editCardBack').value.trim();
+    
+    if (!front || !back) {
+        alert('Заполните обе стороны карточки');
+        return;
+    }
+    
+    const deck = state.decks.find(d => d.id === state.currentDeckId);
+    const card = deck.cards.find(c => c.id === cardId);
+    
+    if (card) {
+        card.front = front;
+        card.back = back;
+        saveData();
+        renderCardsList();
+    }
+    
+    closeModal();
+}
+
+function deleteCard(cardId) {
+    if (!confirm('Удалить эту карточку?')) return;
+    
+    const deck = state.decks.find(d => d.id === state.currentDeckId);
+    deck.cards = deck.cards.filter(c => c.id !== cardId);
+    saveData();
+    renderCardsList();
+}
+
+function closeModal() {
+    const modal = document.querySelector('.modal');
+    if (modal) {
+        modal.remove();
+    }
 }
 
 // Управление колодами
@@ -194,27 +270,76 @@ function createNewCard() {
     renderCardsList();
 }
 
-// Обучение
-function startLearning() {
-    // Находим первую непустую колоду
-    const deckWithCards = state.decks.find(deck => deck.cards.length > 0);
+// Обучение - выбор колоды
+function showDeckSelection() {
+    const learnScreen = document.getElementById('learnScreen');
     
-    if (!deckWithCards) {
-        alert('Сначала создайте колоду с карточками!');
-        showScreen('decksScreen');
+    // Скрываем элементы обучения
+    document.querySelector('.learn-header').classList.add('hidden');
+    document.querySelector('.card-container').classList.add('hidden');
+    document.querySelector('.learn-controls').classList.add('hidden');
+    document.getElementById('sessionComplete').classList.add('hidden');
+    
+    // Показываем выбор колоды
+    let deckSelection = document.querySelector('.deck-selection');
+    if (!deckSelection) {
+        deckSelection = document.createElement('div');
+        deckSelection.className = 'deck-selection';
+        learnScreen.insertBefore(deckSelection, learnScreen.firstChild);
+    }
+    
+    const nonEmptyDecks = state.decks.filter(deck => deck.cards.length > 0);
+    
+    if (nonEmptyDecks.length === 0) {
+        deckSelection.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📚</div>
+                <p>Нет колод с карточками</p>
+                <p style="font-size: 14px; margin-top: 8px; margin-bottom: 16px;">Сначала создайте колоду и добавьте карточки</p>
+                <button class="primary" onclick="showScreen('decksScreen')">Создать колоду</button>
+            </div>
+        `;
         return;
     }
     
-    state.currentDeckId = deckWithCards.id;
+    let optionsHtml = '';
+    nonEmptyDecks.forEach(deck => {
+        optionsHtml += `
+            <div class="option-button" onclick="startDeckLearning('${deck.id}')">
+                <h4>${deck.name}</h4>
+                <p>${deck.cards.length} карточек</p>
+                <small>${deck.description || ''}</small>
+            </div>
+        `;
+    });
+    
+    deckSelection.innerHTML = `
+        <h3 style="text-align: center; margin-bottom: 20px;">🎯 Выберите колоду для изучения</h3>
+        <div class="learn-options">
+            ${optionsHtml}
+        </div>
+    `;
+}
+
+function startDeckLearning(deckId) {
+    const deck = state.decks.find(d => d.id === deckId);
+    if (!deck || deck.cards.length === 0) return;
+    
+    state.currentDeckId = deckId;
     state.currentSession = {
-        deckId: deckWithCards.id,
+        deckId: deckId,
         currentCardIndex: 0,
         correctAnswers: 0,
         wrongAnswers: 0,
-        cards: [...deckWithCards.cards].sort(() => Math.random() - 0.5) // Перемешиваем карточки
+        cards: [...deck.cards].sort(() => Math.random() - 0.5)
     };
     
-    showScreen('learnScreen');
+    // Показываем элементы обучения
+    document.querySelector('.deck-selection').classList.add('hidden');
+    document.querySelector('.learn-header').classList.remove('hidden');
+    document.querySelector('.card-container').classList.remove('hidden');
+    document.querySelector('.learn-controls').classList.remove('hidden');
+    
     showNextCard();
 }
 
@@ -226,8 +351,8 @@ function showNextCard() {
     }
     
     const currentCard = session.cards[session.currentCardIndex];
-    document.getElementById('cardFront').innerHTML = `<h3>${currentCard.front}</h3>`;
-    document.getElementById('cardBack').innerHTML = `<h3>${currentCard.back}</h3>`;
+    document.getElementById('cardFront').innerHTML = `<h3>${escapeHtml(currentCard.front)}</h3>`;
+    document.getElementById('cardBack').innerHTML = `<h3>${escapeHtml(currentCard.back)}</h3>`;
     document.getElementById('learnCard').classList.remove('flipped');
     
     // Обновляем прогресс
@@ -257,12 +382,60 @@ function answerCard(isCorrect) {
 }
 
 function finishSession() {
+    const session = state.currentSession;
+    
     document.getElementById('sessionComplete').classList.remove('hidden');
     document.querySelector('.learn-controls').classList.add('hidden');
     
-    state.stats.totalLearned += state.currentSession.correctAnswers;
+    // Обновляем статистику
+    state.stats.totalLearned += session.correctAnswers;
+    state.stats.sessionsCompleted = (state.stats.sessionsCompleted || 0) + 1;
     state.stats.lastStudyDate = new Date().toISOString();
+    
+    // Показываем статистику сессии
+    document.getElementById('sessionComplete').innerHTML = `
+        <h2>🎉 Сессия завершена!</h2>
+        <div class="session-stats">
+            <div class="stat-row">
+                <div class="stat-item">
+                    <div class="stat-value correct">${session.correctAnswers}</div>
+                    <div class="stat-label">Правильно</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value wrong">${session.wrongAnswers}</div>
+                    <div class="stat-label">Нужно повторить</div>
+                </div>
+            </div>
+            <div class="stat-row">
+                <div class="stat-item">
+                    <div class="stat-value">${Math.round((session.correctAnswers / session.cards.length) * 100)}%</div>
+                    <div class="stat-label">Успех</div>
+                </div>
+            </div>
+        </div>
+        <div class="session-actions">
+            <button onclick="showScreen('menuScreen')">В меню</button>
+            <button class="primary" onclick="restartSession()">🔄 Повторить</button>
+            <button class="primary" onclick="showDeckSelection()">📚 Другая колода</button>
+        </div>
+    `;
+    
     saveData();
+}
+
+function restartSession() {
+    if (!state.currentSession) return;
+    
+    // Сбрасываем сессию с теми же карточками
+    state.currentSession.currentCardIndex = 0;
+    state.currentSession.correctAnswers = 0;
+    state.currentSession.wrongAnswers = 0;
+    state.currentSession.cards = [...state.currentSession.cards].sort(() => Math.random() - 0.5);
+    
+    document.getElementById('sessionComplete').classList.add('hidden');
+    document.querySelector('.learn-controls').classList.remove('hidden');
+    
+    showNextCard();
 }
 
 // Статистика
@@ -273,7 +446,6 @@ function updateStats() {
     document.getElementById('totalDecks').textContent = state.decks.length;
     document.getElementById('learnedToday').textContent = state.stats.learnedToday;
     
-    // Обновляем последние действия
     updateRecentActivity();
 }
 
@@ -295,6 +467,13 @@ function updateRecentActivity() {
         activityItem.textContent = `Изучено ${state.stats.learnedToday} слов сегодня`;
         activityList.appendChild(activityItem);
     }
+    
+    if (state.stats.sessionsCompleted) {
+        const activityItem = document.createElement('div');
+        activityItem.className = 'activity-item';
+        activityItem.textContent = `Завершено сессий: ${state.stats.sessionsCompleted}`;
+        activityList.appendChild(activityItem);
+    }
 }
 
 // Сохранение и загрузка данных
@@ -311,7 +490,12 @@ function loadData() {
     if (saved) {
         const data = JSON.parse(saved);
         state.decks = data.decks || [];
-        state.stats = data.stats || { totalLearned: 0, learnedToday: 0, lastStudyDate: null };
+        state.stats = data.stats || { 
+            totalLearned: 0, 
+            learnedToday: 0, 
+            lastStudyDate: null,
+            sessionsCompleted: 0
+        };
     }
     
     // Сбрасываем счетчик изученных сегодня если это новый день
@@ -340,6 +524,3 @@ function initDemoData() {
         saveData();
     }
 }
-
-// Инициализируем демо-данные при первом запуске
-initDemoData();

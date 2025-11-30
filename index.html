@@ -17,6 +17,34 @@
             </div>
             
             <div class="menu-cards">
+                <div class="menu-card" onclick="showScreen('mainFunctionsScreen')">
+                    <div class="menu-icon">🚀</div>
+                    <h3>Основные функции</h3>
+                    <p>Колоды, обучение и статистика</p>
+                </div>
+                
+                <div class="menu-card" onclick="showScreen('settingsScreen')">
+                    <div class="menu-icon">⚙️</div>
+                    <h3>Настройки</h3>
+                    <p>Язык и другие параметры</p>
+                </div>
+
+                <div class="menu-card" onclick="showScreen('aboutScreen')">
+                    <div class="menu-icon">👨‍💻</div>
+                    <h3>Об авторе</h3>
+                    <p>Узнать больше о создателе</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Экран основных функций -->
+        <div id="mainFunctionsScreen" class="screen">
+            <div class="screen-header">
+                <button class="back-btn" onclick="showScreen('menuScreen')">← Назад</button>
+                <h2>Основные функции</h2>
+            </div>
+            
+            <div class="menu-cards">
                 <div class="menu-card" onclick="showScreen('decksScreen')">
                     <div class="menu-icon">📚</div>
                     <h3>Мои колоды</h3>
@@ -34,11 +62,54 @@
                     <h3>Статистика</h3>
                     <p>Следи за своим прогрессом</p>
                 </div>
+            </div>
+        </div>
 
-                <div class="menu-card" onclick="showScreen('aboutScreen')">
-                    <div class="menu-icon">👨‍💻</div>
-                    <h3>Об авторе</h3>
-                    <p>Узнать больше о создателе</p>
+        <!-- Экран настроек -->
+        <div id="settingsScreen" class="screen">
+            <div class="screen-header">
+                <button class="back-btn" onclick="showScreen('menuScreen')">← Назад</button>
+                <h2>Настройки</h2>
+            </div>
+            
+            <div class="settings-content">
+                <div class="settings-description">
+                    <p>Вы перешли к настройкам. Выберите вам подходящий пункт:</p>
+                </div>
+                
+                <div class="settings-options">
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h3>🌐 Язык интерфейса</h3>
+                            <p>Выберите предпочитаемый язык</p>
+                        </div>
+                        <div class="setting-control">
+                            <select id="languageSelect" onchange="changeLanguage(this.value)">
+                                <option value="ru">Русский</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h3>🗑️ Очистить данные</h3>
+                            <p>Удалить все колоды и статистику</p>
+                        </div>
+                        <div class="setting-control">
+                            <button class="btn-danger" onclick="clearAllData()">Очистить</button>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h3>🔄 Сбросить прогресс</h3>
+                            <p>Обнулить статистику обучения</p>
+                        </div>
+                        <div class="setting-control">
+                            <button class="btn-warning" onclick="resetProgress()">Сбросить</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -46,7 +117,7 @@
         <!-- Экран колод -->
         <div id="decksScreen" class="screen">
             <div class="screen-header">
-                <button class="back-btn" onclick="showScreen('menuScreen')">← Назад</button>
+                <button class="back-btn" onclick="showScreen('mainFunctionsScreen')">← Назад</button>
                 <h2>Мои колоды</h2>
                 <button class="add-btn" onclick="showAddDeckForm()">+</button>
             </div>
@@ -89,14 +160,14 @@
 
         <!-- Экран обучения -->
         <div id="learnScreen" class="screen">
-            <div class="learn-header">
+            <div class="learn-header hidden">
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
                 <div class="progress-text" id="progressText">1/10</div>
             </div>
             
-            <div class="card-container">
+            <div class="card-container hidden">
                 <div class="card" id="learnCard" onclick="flipCard()">
                     <div class="card-front" id="cardFront">
                         <h3>Нажмите чтобы начать</h3>
@@ -107,26 +178,20 @@
                 </div>
             </div>
             
-            <div class="learn-controls">
+            <div class="learn-controls hidden">
                 <button class="btn-wrong" onclick="answerCard(false)">❌ Еще раз</button>
                 <button class="btn-correct" onclick="answerCard(true)">✅ Знаю</button>
             </div>
             
             <div class="session-complete hidden" id="sessionComplete">
-                <h2>🎉 Отлично!</h2>
-                <p>Ты завершил эту сессию</p>
-                <div class="session-actions">
-                    <button class="secondary" onclick="showScreen('menuScreen')">В меню</button>
-                    <button class="primary" onclick="startLearning()">Повторить</button>
-                    <button class="primary" onclick="showDeckSelection()">Другая колода</button>
-                </div>
+                <!-- Будет заполнено динамически -->
             </div>
         </div>
 
         <!-- Экран статистики -->
         <div id="statsScreen" class="screen">
             <div class="screen-header">
-                <button class="back-btn" onclick="showScreen('menuScreen')">← Назад</button>
+                <button class="back-btn" onclick="showScreen('mainFunctionsScreen')">← Назад</button>
                 <h2>Статистика</h2>
             </div>
             
@@ -171,13 +236,13 @@
                             📢 Мой Telegram-канал
                         </a>
                         <p class="channel-description">
-                            Хочешь следить за путём автора или просто поддержать его? You welcom.
+                            Подписывайся на мой канал чтобы быть в курсе обновлений и новых проектов!
                         </p>
                     </div>
                     
                     <div class="app-info">
                         <h4>О приложении</h4>
-                        <p>Litherium - это бесплатный тренажёр для изучения слов с карточками. Создавай свои колоды, учи слова и отслеживай прогресс. Спасибо, что выбераете нас.</p>
+                        <p>Litherium - это бесплатный тренажёр для изучения слов с карточками. Создавай свои колоды, учи слова и отслеживай прогресс!</p>
                     </div>
                 </div>
             </div>

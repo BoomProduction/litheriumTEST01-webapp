@@ -40,8 +40,6 @@ function showScreen(screenName) {
         renderDecksList();
     } else if (screenName === 'statsScreen') {
         updateStats();
-    } else if (screenName === 'learnScreen') {
-        showStudyMethodSelection();
     }
 }
 
@@ -264,9 +262,7 @@ function createNewCard() {
         front: front,
         back: back,
         createdAt: new Date().toISOString(),
-        known: false,
-        reviewCount: 0,
-        lastReviewed: null
+        known: false
     };
     
     deck.cards.push(newCard);
@@ -275,8 +271,30 @@ function createNewCard() {
     renderCardsList();
 }
 
-// Выбор метода изучения
-function showStudyMethodSelection() {
+// Обучение
+function startLearning() {
+    // Находим первую непустую колоду
+    const deckWithCards = state.decks.find(deck => deck.cards.length > 0);
+    
+    if (!deckWithCards) {
+        showDeckSelection();
+        return;
+    }
+    
+    state.currentDeckId = deckWithCards.id;
+    state.currentSession = {
+        deckId: deckWithCards.id,
+        currentCardIndex: 0,
+        correctAnswers: 0,
+        wrongAnswers: 0,
+        cards: [...deckWithCards.cards].sort(() => Math.random() - 0.5) // Перемешиваем карточки
+    };
+    
+    showScreen('learnScreen');
+    showNextCard();
+}
+
+function showDeckSelection() {
     const learnScreen = document.getElementById('learnScreen');
     
     // Скрываем элементы обучения
@@ -285,18 +303,21 @@ function showStudyMethodSelection() {
     document.querySelector('.learn-controls').classList.add('hidden');
     document.getElementById('sessionComplete').classList.add('hidden');
     
-    // Удаляем старый выбор если есть
-    const oldSelection = document.querySelector('.study-method-selector');
-    if (oldSelection) {
-        oldSelection.remove();
+    // Удаляем старый выбор колоды если есть
+    const oldDeckSelection = document.querySelector('.deck-selection');
+    if (oldDeckSelection) {
+        oldDeckSelection.remove();
     }
+    
+    // Создаем новый выбор колоды
+    const deckSelection = document.createElement('div');
+    deckSelection.className = 'deck-selection';
+    learnScreen.insertBefore(deckSelection, learnScreen.firstChild);
     
     const nonEmptyDecks = state.decks.filter(deck => deck.cards.length > 0);
     
     if (nonEmptyDecks.length === 0) {
-        const methodSelector = document.createElement('div');
-        methodSelector.className = 'study-method-selector';
-        methodSelector.innerHTML = `
+        deckSelection.innerHTML = `
             <div class="no-decks-message">
                 <div class="icon">📚</div>
                 <p>Нет колод с карточками</p>
@@ -307,71 +328,13 @@ function showStudyMethodSelection() {
                 </div>
             </div>
         `;
-        learnScreen.insertBefore(methodSelector, learnScreen.firstChild);
         return;
     }
-    
-    const methodSelector = document.createElement('div');
-    methodSelector.className = 'study-method-selector';
-    methodSelector.innerHTML = `
-        <h3 style="text-align: center; margin-bottom: 20px;">🎯 Выберите метод изучения</h3>
-        <div class="method-options">
-            <div class="method-option" onclick="selectStudyMethod('standard')">
-                <div class="method-icon">🔁</div>
-                <div class="method-title">Стандартный</div>
-                <div class="method-description">Все карточки по одному разу в случайном порядке</div>
-            </div>
-            <div class="method-option" onclick="selectStudyMethod('repeat-unknown')">
-                <div class="method-icon">🔄</div>
-                <div class="method-title">С повторением неизвестных</div>
-                <div class="method-description">Неизвестные слова добавляются в конец для повторения</div>
-            </div>
-        </div>
-        <div class="session-actions" style="margin-top: 20px;">
-            <button class="secondary" onclick="showScreen('menuScreen')">← В меню</button>
-        </div>
-    `;
-    
-    learnScreen.insertBefore(methodSelector, learnScreen.firstChild);
-}
-
-let selectedStudyMethod = 'standard';
-
-function selectStudyMethod(method) {
-    selectedStudyMethod = method;
-    
-    // Убираем выделение со всех методов
-    document.querySelectorAll('.method-option').forEach(option => {
-        option.classList.remove('selected');
-    });
-    
-    // Добавляем выделение выбранному методу
-    event.currentTarget.classList.add('selected');
-    
-    // Показываем выбор колоды для выбранного метода
-    setTimeout(() => showDeckSelection(), 300);
-}
-
-// Обучение - выбор колоды
-function showDeckSelection() {
-    const learnScreen = document.getElementById('learnScreen');
-    
-    // Удаляем старый выбор колоды если есть
-    const oldDeckSelection = document.querySelector('.deck-selection');
-    if (oldDeckSelection) {
-        oldDeckSelection.remove();
-    }
-    
-    const deckSelection = document.createElement('div');
-    deckSelection.className = 'deck-selection';
-    learnScreen.insertBefore(deckSelection, learnScreen.firstChild);
-    
-    const nonEmptyDecks = state.decks.filter(deck => deck.cards.length > 0);
     
     let optionsHtml = '';
     nonEmptyDecks.forEach(deck => {
         optionsHtml += `
-            <div class="option-button" onclick="startDeckLearning('${deck.id}', '${selectedStudyMethod}')">
+            <div class="option-button" onclick="startDeckLearning('${deck.id}')">
                 <h4>${deck.name}</h4>
                 <p>${deck.cards.length} карточек</p>
                 <small>${deck.description || ''}</small>
@@ -380,82 +343,48 @@ function showDeckSelection() {
     });
     
     deckSelection.innerHTML = `
-        <h3 style="text-align: center; margin-bottom: 20px;">📚 Выберите колоду</h3>
+        <h3 style="text-align: center; margin-bottom: 20px;">🎯 Выберите колоду для изучения</h3>
         <div class="learn-options">
             ${optionsHtml}
         </div>
         <div class="session-actions">
-            <button class="secondary" onclick="showStudyMethodSelection()">← Назад к методам</button>
+            <button class="secondary" onclick="showScreen('menuScreen')">← В меню</button>
         </div>
     `;
+    
+    showScreen('learnScreen');
 }
 
-function startDeckLearning(deckId, method) {
+function startDeckLearning(deckId) {
     const deck = state.decks.find(d => d.id === deckId);
     if (!deck || deck.cards.length === 0) return;
     
     state.currentDeckId = deckId;
+    state.currentSession = {
+        deckId: deckId,
+        currentCardIndex: 0,
+        correctAnswers: 0,
+        wrongAnswers: 0,
+        cards: [...deck.cards].sort(() => Math.random() - 0.5)
+    };
     
-    // Создаем сессию в зависимости от выбранного метода
-    if (method === 'repeat-unknown') {
-        state.currentSession = {
-            deckId: deckId,
-            currentCardIndex: 0,
-            correctAnswers: 0,
-            wrongAnswers: 0,
-            method: 'repeat-unknown',
-            cards: [...deck.cards].sort(() => Math.random() - 0.5),
-            pendingReviewCards: [], // Карточки для повторения
-            originalDeckSize: deck.cards.length,
-            learnedWords: [],
-            reviewWords: [],
-            sessionCompleted: false
-        };
-    } else {
-        state.currentSession = {
-            deckId: deckId,
-            currentCardIndex: 0,
-            correctAnswers: 0,
-            wrongAnswers: 0,
-            method: 'standard',
-            cards: [...deck.cards].sort(() => Math.random() - 0.5),
-            learnedWords: [],
-            reviewWords: [],
-            sessionCompleted: false
-        };
-    }
-    
-    // Удаляем выбор колоды и метода
+    // Удаляем выбор колоды
     const deckSelection = document.querySelector('.deck-selection');
-    const methodSelector = document.querySelector('.study-method-selector');
-    if (deckSelection) deckSelection.remove();
-    if (methodSelector) methodSelector.remove();
+    if (deckSelection) {
+        deckSelection.remove();
+    }
     
     // Показываем элементы обучения
     document.querySelector('.learn-header').classList.remove('hidden');
     document.querySelector('.card-container').classList.remove('hidden');
     document.querySelector('.learn-controls').classList.remove('hidden');
-    document.getElementById('sessionComplete').classList.add('hidden');
     
     showNextCard();
 }
 
 function showNextCard() {
     const session = state.currentSession;
-    if (!session) return;
-    
-    // Проверяем, нужно ли добавить карточки для повторения
-    if (session.method === 'repeat-unknown' && 
-        session.currentCardIndex >= session.cards.length && 
-        session.pendingReviewCards.length > 0) {
-        
-        // Добавляем карточки для повторения в конец
-        session.cards = session.cards.concat(session.pendingReviewCards);
-        session.pendingReviewCards = [];
-    }
-    
-    // Проверяем, завершена ли сессия
-    if (session.currentCardIndex >= session.cards.length) {
+    if (!session || session.currentCardIndex >= session.cards.length) {
         finishSession();
         return;
     }
@@ -468,24 +397,10 @@ function showNextCard() {
     document.getElementById('learnCard').classList.remove('flipped');
     
     // Обновляем прогресс
-    updateProgress(session);
-}
-
-function updateProgress(session) {
-    let currentPosition, totalCards;
-    
-    if (session.method === 'repeat-unknown') {
-        currentPosition = session.currentCardIndex + 1;
-        totalCards = session.originalDeckSize + session.pendingReviewCards.length;
-    } else {
-        currentPosition = session.currentCardIndex + 1;
-        totalCards = session.cards.length;
-    }
-    
-    // Ограничиваем прогресс 100%
-    const progress = Math.min(100, ((currentPosition - 1) / totalCards) * 100);
+    const progress = (session.currentCardIndex / session.cards.length) * 100;
     document.getElementById('progressFill').style.width = `${progress}%`;
-    document.getElementById('progressText').textContent = `${currentPosition}/${totalCards}`;
+    document.getElementById('progressText').textContent = 
+        `${session.currentCardIndex + 1}/${session.cards.length}`;
 }
 
 function flipCard() {
@@ -496,74 +411,24 @@ function answerCard(isCorrect) {
     const session = state.currentSession;
     if (!session) return;
     
-    const currentCard = session.cards[session.currentCardIndex];
-    
     if (isCorrect) {
         session.correctAnswers++;
         state.stats.learnedToday++;
-        
-        // Добавляем в изученные слова
-        if (!session.learnedWords.find(w => w.id === currentCard.id)) {
-            session.learnedWords.push({
-                id: currentCard.id,
-                front: currentCard.front,
-                back: currentCard.back
-            });
-        }
-        
-        // Убираем из pendingReviewCards если там есть
-        session.pendingReviewCards = session.pendingReviewCards.filter(card => card.id !== currentCard.id);
-        
     } else {
         session.wrongAnswers++;
-        
-        // Для метода с повторением добавляем карточку в pendingReviewCards
-        if (session.method === 'repeat-unknown') {
-            if (!session.pendingReviewCards.find(card => card.id === currentCard.id)) {
-                session.pendingReviewCards.push(currentCard);
-            }
-        }
-        
-        // Добавляем в слова для повторения
-        if (!session.reviewWords.find(w => w.id === currentCard.id)) {
-            session.reviewWords.push({
-                id: currentCard.id,
-                front: currentCard.front,
-                back: currentCard.back
-            });
-        }
-    }
-    
-    // Обновляем статистику карточки
-    currentCard.reviewCount = (currentCard.reviewCount || 0) + 1;
-    currentCard.lastReviewed = new Date().toISOString();
-    if (isCorrect) {
-        currentCard.known = true;
     }
     
     session.currentCardIndex++;
-    
-    // Показываем следующую карточку
     showNextCard();
 }
 
 function finishSession() {
     const session = state.currentSession;
     
-    if (!session) return;
-    
-    // Помечаем сессию как завершенную
-    session.sessionCompleted = true;
-    
-    // Скрываем элементы обучения
-    document.querySelector('.learn-header').classList.add('hidden');
-    document.querySelector('.card-container').classList.add('hidden');
+    document.getElementById('sessionComplete').classList.remove('hidden');
     document.querySelector('.learn-controls').classList.add('hidden');
     
-    // Показываем экран завершения
-    document.getElementById('sessionComplete').classList.remove('hidden');
-    
-    // Обновляем глобальную статистику
+    // Обновляем статистику
     state.stats.totalLearned += session.correctAnswers;
     state.stats.sessionsCompleted = (state.stats.sessionsCompleted || 0) + 1;
     state.stats.totalAnswers = (state.stats.totalAnswers || 0) + session.correctAnswers + session.wrongAnswers;
@@ -571,18 +436,12 @@ function finishSession() {
     state.stats.lastStudyDate = new Date().toISOString();
     
     // Добавляем в историю изучения
-    const totalCardsInSession = session.method === 'repeat-unknown' ? 
-        session.originalDeckSize : session.cards.length;
-    
     state.stats.studyHistory.unshift({
         date: new Date().toISOString(),
         deckId: session.deckId,
-        method: session.method,
         correct: session.correctAnswers,
         wrong: session.wrongAnswers,
-        total: totalCardsInSession,
-        learnedWords: session.learnedWords || [],
-        reviewWords: session.reviewWords || []
+        total: session.cards.length
     });
     
     // Ограничиваем историю последними 10 сессиями
@@ -590,79 +449,7 @@ function finishSession() {
         state.stats.studyHistory = state.stats.studyHistory.slice(0, 10);
     }
     
-    // Формируем HTML для завершения сессии
-    const successRate = Math.round((session.correctAnswers / totalCardsInSession) * 100);
-    
-    let sessionHTML = `
-        <h2>🎉 Сессия завершена!</h2>
-        <div class="session-stats">
-            <div class="stat-row">
-                <div class="stat-item">
-                    <div class="stat-value correct">${session.correctAnswers}</div>
-                    <div class="stat-label">Правильно</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value wrong">${session.wrongAnswers}</div>
-                    <div class="stat-label">Нужно повторить</div>
-                </div>
-            </div>
-            <div class="stat-row">
-                <div class="stat-item">
-                    <div class="stat-value">${successRate}%</div>
-                    <div class="stat-label">Успех</div>
-                </div>
-            </div>
-    `;
-    
-    // Показываем детали изученных слов
-    if (session.learnedWords && session.learnedWords.length > 0) {
-        sessionHTML += `
-            <div class="session-details">
-                <h4>✅ Изученные слова (${session.learnedWords.length})</h4>
-                <div class="learned-words-list">
-                    ${session.learnedWords.map(word => 
-                        `<div class="word-item"><strong>${escapeHtml(word.front)}</strong> - ${escapeHtml(word.back)}</div>`
-                    ).join('')}
-                </div>
-            </div>
-        `;
-    }
-    
-    // Показываем слова для повторения
-    if (session.reviewWords && session.reviewWords.length > 0) {
-        sessionHTML += `
-            <div class="session-details">
-                <h4>🔄 Слова для повторения (${session.reviewWords.length})</h4>
-                <div class="review-words-details">
-                    ${session.reviewWords.map(word => 
-                        `<div class="word-item"><strong>${escapeHtml(word.front)}</strong> - ${escapeHtml(word.back)}</div>`
-                    ).join('')}
-                </div>
-            </div>
-        `;
-    }
-    
-    sessionHTML += `
-        </div>
-        <div class="session-actions">
-            <button class="secondary" onclick="showScreen('menuScreen')">В меню</button>
-            <button class="primary" onclick="restartSession()">🔄 Повторить</button>
-            <button class="primary" onclick="showStudyMethodSelection()">📚 Другая колода</button>
-        </div>
-    `;
-    
-    document.getElementById('sessionComplete').innerHTML = sessionHTML;
     saveData();
-}
-
-function restartSession() {
-    if (!state.currentSession) return;
-    
-    const deck = state.decks.find(d => d.id === state.currentSession.deckId);
-    if (!deck) return;
-    
-    // Перезапускаем сессию с теми же настройками
-    startDeckLearning(state.currentSession.deckId, state.currentSession.method);
 }
 
 // Статистика
@@ -739,9 +526,6 @@ function updateRecentActivity() {
                 <span>✅ ${session.correct} | ❌ ${session.wrong}</span>
                 <span>${successRate}% успеха</span>
             </div>
-            <div style="font-size: 11px; color: var(--secondary-color); margin-top: 4px;">
-                Метод: ${session.method === 'repeat-unknown' ? 'С повторением' : 'Стандартный'}
-            </div>
         `;
         
         activityList.appendChild(activityItem);
@@ -788,10 +572,10 @@ function initDemoData() {
             name: 'Английские слова',
             description: 'Базовые слова для начала',
             cards: [
-                { id: '1', front: 'Hello', back: 'Привет', known: false, reviewCount: 0 },
-                { id: '2', front: 'Goodbye', back: 'До свидания', known: false, reviewCount: 0 },
-                { id: '3', front: 'Thank you', back: 'Спасибо', known: false, reviewCount: 0 },
-                { id: '4', front: 'Please', back: 'Пожалуйста', known: false, reviewCount: 0 }
+                { id: '1', front: 'Hello', back: 'Привет', known: false },
+                { id: '2', front: 'Goodbye', back: 'До свидания', known: false },
+                { id: '3', front: 'Thank you', back: 'Спасибо', known: false },
+                { id: '4', front: 'Please', back: 'Пожалуйста', known: false }
             ],
             createdAt: new Date().toISOString()
         };

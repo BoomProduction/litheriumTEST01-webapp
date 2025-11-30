@@ -34,6 +34,12 @@
                     <h3>Статистика</h3>
                     <p>Следи за своим прогрессом</p>
                 </div>
+
+                <div class="menu-card" onclick="showScreen('aboutScreen')">
+                    <div class="menu-icon">👨‍💻</div>
+                    <h3>Об авторе</h3>
+                    <p>Узнать больше о создателе</p>
+                </div>
             </div>
         </div>
 
@@ -83,14 +89,14 @@
 
         <!-- Экран обучения -->
         <div id="learnScreen" class="screen">
-            <div class="learn-header hidden">
+            <div class="learn-header">
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
                 <div class="progress-text" id="progressText">1/10</div>
             </div>
             
-            <div class="card-container hidden">
+            <div class="card-container">
                 <div class="card" id="learnCard" onclick="flipCard()">
                     <div class="card-front" id="cardFront">
                         <h3>Нажмите чтобы начать</h3>
@@ -101,13 +107,19 @@
                 </div>
             </div>
             
-            <div class="learn-controls hidden">
+            <div class="learn-controls">
                 <button class="btn-wrong" onclick="answerCard(false)">❌ Еще раз</button>
                 <button class="btn-correct" onclick="answerCard(true)">✅ Знаю</button>
             </div>
             
             <div class="session-complete hidden" id="sessionComplete">
-                <!-- Будет заполнено динамически -->
+                <h2>🎉 Отлично!</h2>
+                <p>Ты завершил эту сессию</p>
+                <div class="session-actions">
+                    <button class="secondary" onclick="showScreen('menuScreen')">В меню</button>
+                    <button class="primary" onclick="startLearning()">Повторить</button>
+                    <button class="primary" onclick="showDeckSelection()">Другая колода</button>
+                </div>
             </div>
         </div>
 
@@ -157,6 +169,36 @@
                     <h3>История изучения</h3>
                     <div id="recentActivity" class="activity-list">
                         <!-- Активность будет здесь -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Экран об авторе -->
+        <div id="aboutScreen" class="screen">
+            <div class="screen-header">
+                <button class="back-btn" onclick="showScreen('menuScreen')">← Назад</button>
+                <h2>Об авторе</h2>
+            </div>
+            
+            <div class="about-content">
+                <div class="author-card">
+                    <div class="author-avatar">👨‍💻</div>
+                    <h3>Sayato</h3>
+                    <p>Создатель Litherium</p>
+                    
+                    <div class="author-links">
+                        <a href="https://t.me/sayatoTg" target="_blank" class="tg-link">
+                            📢 Мой Telegram-канал
+                        </a>
+                        <p class="channel-description">
+                            Подписывайся на мой канал чтобы быть в курсе обновлений и новых проектов!
+                        </p>
+                    </div>
+                    
+                    <div class="app-info">
+                        <h4>О приложении</h4>
+                        <p>Litherium - это бесплатный тренажёр для изучения слов с карточками. Создавай свои колоды, учи слова и отслеживай прогресс!</p>
                     </div>
                 </div>
             </div>

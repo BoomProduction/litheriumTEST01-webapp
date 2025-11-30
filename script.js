@@ -49,8 +49,8 @@ function renderDecksList() {
 
     if (state.decks.length === 0) {
         decksList.innerHTML = `
-            <div style="text-align: center; padding: 40px 20px; color: var(--secondary-color);">
-                <div style="font-size: 48px; margin-bottom: 16px;">📚</div>
+            <div class="no-decks-message">
+                <div class="icon">📚</div>
                 <p>У вас пока нет колод</p>
                 <p style="font-size: 14px; margin-top: 8px;">Создайте первую колоду чтобы начать учить слова</p>
             </div>
@@ -99,8 +99,8 @@ function renderCardsList() {
 
     if (deck.cards.length === 0) {
         cardsList.innerHTML = `
-            <div style="text-align: center; padding: 40px 20px; color: var(--secondary-color);">
-                <div style="font-size: 48px; margin-bottom: 16px;">🃏</div>
+            <div class="no-decks-message">
+                <div class="icon">🃏</div>
                 <p>В этой колоде пока нет карточек</p>
                 <p style="font-size: 14px; margin-top: 8px;">Добавьте первую карточку чтобы начать обучение</p>
             </div>
@@ -149,7 +149,7 @@ function editCard(cardId) {
             <input type="text" id="editCardFront" value="${escapeHtml(card.front)}" placeholder="Слово/Вопрос" maxlength="50">
             <input type="text" id="editCardBack" value="${escapeHtml(card.back)}" placeholder="Перевод/Ответ" maxlength="50">
             <div class="form-actions">
-                <button onclick="closeModal()">Отмена</button>
+                <button class="secondary" onclick="closeModal()">Отмена</button>
                 <button class="primary" onclick="saveCardEdit('${cardId}')">Сохранить</button>
             </div>
         </div>
@@ -280,23 +280,29 @@ function showDeckSelection() {
     document.querySelector('.learn-controls').classList.add('hidden');
     document.getElementById('sessionComplete').classList.add('hidden');
     
-    // Показываем выбор колоды
-    let deckSelection = document.querySelector('.deck-selection');
-    if (!deckSelection) {
-        deckSelection = document.createElement('div');
-        deckSelection.className = 'deck-selection';
-        learnScreen.insertBefore(deckSelection, learnScreen.firstChild);
+    // Удаляем старый выбор колоды если есть
+    const oldDeckSelection = document.querySelector('.deck-selection');
+    if (oldDeckSelection) {
+        oldDeckSelection.remove();
     }
+    
+    // Создаем новый выбор колоды
+    const deckSelection = document.createElement('div');
+    deckSelection.className = 'deck-selection';
+    learnScreen.insertBefore(deckSelection, learnScreen.firstChild);
     
     const nonEmptyDecks = state.decks.filter(deck => deck.cards.length > 0);
     
     if (nonEmptyDecks.length === 0) {
         deckSelection.innerHTML = `
-            <div style="text-align: center; padding: 20px;">
-                <div style="font-size: 48px; margin-bottom: 16px;">📚</div>
+            <div class="no-decks-message">
+                <div class="icon">📚</div>
                 <p>Нет колод с карточками</p>
                 <p style="font-size: 14px; margin-top: 8px; margin-bottom: 16px;">Сначала создайте колоду и добавьте карточки</p>
-                <button class="primary" onclick="showScreen('decksScreen')">Создать колоду</button>
+                <div class="session-actions">
+                    <button class="secondary" onclick="showScreen('menuScreen')">В меню</button>
+                    <button class="primary" onclick="showScreen('decksScreen')">Создать колоду</button>
+                </div>
             </div>
         `;
         return;
@@ -318,6 +324,9 @@ function showDeckSelection() {
         <div class="learn-options">
             ${optionsHtml}
         </div>
+        <div class="session-actions">
+            <button class="secondary" onclick="showScreen('menuScreen')">← В меню</button>
+        </div>
     `;
 }
 
@@ -334,8 +343,13 @@ function startDeckLearning(deckId) {
         cards: [...deck.cards].sort(() => Math.random() - 0.5)
     };
     
+    // Удаляем выбор колоды
+    const deckSelection = document.querySelector('.deck-selection');
+    if (deckSelection) {
+        deckSelection.remove();
+    }
+    
     // Показываем элементы обучения
-    document.querySelector('.deck-selection').classList.add('hidden');
     document.querySelector('.learn-header').classList.remove('hidden');
     document.querySelector('.card-container').classList.remove('hidden');
     document.querySelector('.learn-controls').classList.remove('hidden');
@@ -353,6 +367,8 @@ function showNextCard() {
     const currentCard = session.cards[session.currentCardIndex];
     document.getElementById('cardFront').innerHTML = `<h3>${escapeHtml(currentCard.front)}</h3>`;
     document.getElementById('cardBack').innerHTML = `<h3>${escapeHtml(currentCard.back)}</h3>`;
+    
+    // Сбрасываем переворот карточки
     document.getElementById('learnCard').classList.remove('flipped');
     
     // Обновляем прогресс
@@ -414,7 +430,7 @@ function finishSession() {
             </div>
         </div>
         <div class="session-actions">
-            <button onclick="showScreen('menuScreen')">В меню</button>
+            <button class="secondary" onclick="showScreen('menuScreen')">В меню</button>
             <button class="primary" onclick="restartSession()">🔄 Повторить</button>
             <button class="primary" onclick="showDeckSelection()">📚 Другая колода</button>
         </div>

@@ -53,7 +53,7 @@
                 <input type="text" id="newDeckName" placeholder="Название колоды" maxlength="30">
                 <textarea id="newDeckDescription" placeholder="Описание (необязательно)"></textarea>
                 <div class="form-actions">
-                    <button onclick="hideAddDeckForm()">Отмена</button>
+                    <button class="secondary" onclick="hideAddDeckForm()">Отмена</button>
                     <button class="primary" onclick="createNewDeck()">Создать</button>
                 </div>
             </div>
@@ -75,7 +75,7 @@
                 <input type="text" id="newCardFront" placeholder="Слово/Вопрос" maxlength="50">
                 <input type="text" id="newCardBack" placeholder="Перевод/Ответ" maxlength="50">
                 <div class="form-actions">
-                    <button onclick="hideAddCardForm()">Отмена</button>
+                    <button class="secondary" onclick="hideAddCardForm()">Отмена</button>
                     <button class="primary" onclick="createNewCard()">Добавить</button>
                 </div>
             </div>
@@ -131,12 +131,33 @@
                     <div class="stat-number" id="learnedToday">0</div>
                     <div class="stat-label">Изучено сегодня</div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalLearned">0</div>
+                    <div class="stat-label">Всего изучено</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="sessionsCompleted">0</div>
+                    <div class="stat-label">Сессий завершено</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="successRate">0%</div>
+                    <div class="stat-label">Успешность</div>
+                </div>
             </div>
             
-            <div class="recent-activity">
-                <h3>Последние действия</h3>
-                <div id="recentActivity" class="activity-list">
-                    <!-- Активность будет здесь -->
+            <div class="stats-charts">
+                <div class="chart-section">
+                    <h3>Прогресс по колодам</h3>
+                    <div id="decksProgress" class="decks-progress">
+                        <!-- Прогресс по колодам будет здесь -->
+                    </div>
+                </div>
+                
+                <div class="recent-activity">
+                    <h3>История изучения</h3>
+                    <div id="recentActivity" class="activity-list">
+                        <!-- Активность будет здесь -->
+                    </div>
                 </div>
             </div>
         </div>

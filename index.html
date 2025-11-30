@@ -23,7 +23,7 @@
                     <p>Создавай и редактируй колоды карточек</p>
                 </div>
                 
-                <div class="menu-card" onclick="startLearning()">
+                <div class="menu-card" onclick="showScreen('learnScreen')">
                     <div class="menu-icon">🎯</div>
                     <h3>Учить слова</h3>
                     <p>Начать тренировку с карточками</p>
@@ -83,14 +83,14 @@
 
         <!-- Экран обучения -->
         <div id="learnScreen" class="screen">
-            <div class="learn-header">
+            <div class="learn-header hidden">
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
                 <div class="progress-text" id="progressText">1/10</div>
             </div>
             
-            <div class="card-container">
+            <div class="card-container hidden">
                 <div class="card" id="learnCard" onclick="flipCard()">
                     <div class="card-front" id="cardFront">
                         <h3>Нажмите чтобы начать</h3>
@@ -101,16 +101,13 @@
                 </div>
             </div>
             
-            <div class="learn-controls">
+            <div class="learn-controls hidden">
                 <button class="btn-wrong" onclick="answerCard(false)">❌ Еще раз</button>
                 <button class="btn-correct" onclick="answerCard(true)">✅ Знаю</button>
             </div>
             
             <div class="session-complete hidden" id="sessionComplete">
-                <h2>🎉 Отлично!</h2>
-                <p>Ты завершил эту сессию</p>
-                <button onclick="showScreen('menuScreen')">В меню</button>
-                <button class="primary" onclick="startLearning()">Повторить</button>
+                <!-- Будет заполнено динамически -->
             </div>
         </div>
 

@@ -364,4 +364,157 @@ function showDeckSelection() {
     deckSelection.className = 'deck-selection';
     learnScreen.insertBefore(deckSelection, learnScreen.firstChild);
     
-    const nonEmptyDecks = state.decks.filter(deck => deck.cards.length > 0
+    const nonEmptyDecks = state.decks.filter(deck => deck.cards.length > 0);
+    
+    if (nonEmptyDecks.length === 0) {
+        deckSelection.innerHTML = `
+            <div class="no-decks-message">
+                <div class="icon">📚</div>
+                <p>Нет колод с карточками</p>
+                <p style="font-size: 14px; margin-top: 8px; margin-bottom: 16px;">Сначала создайте колоду и добавьте карточки</p>
+                <div class="session-actions">
+                    <button class="secondary" onclick="showScreen('menuScreen')">В меню</button>
+                    <button class="primary" onclick="showScreen('decksScreen')">Создать колоду</button>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    let optionsHtml = '';
+    nonEmptyDecks.forEach(deck => {
+        optionsHtml += `
+            <div class="option-button" onclick="startDeckLearning('${deck.id}')">
+                <h4>${deck.name}</h4>
+                <p>${deck.cards.length} карточек</p>
+                <small>${deck.description || ''}</small>
+            </div>
+        `;
+    });
+    
+    deckSelection.innerHTML = `
+        <h3 style="text-align: center; margin-bottom: 20px;">🎯 Выберите колоду для изучения</h3>
+        <div class="learn-options">
+            ${optionsHtml}
+        </div>
+        <div class="session-actions">
+            <button class="secondary" onclick="showScreen('menuScreen')">← В меню</button>
+        </div>
+    `;
+    
+    showScreen('learnScreen');
+}
+
+function startDeckLearning(deckId) {
+    const deck = state.decks.find(d => d.id === deckId);
+    if (!deck || deck.cards.length === 0) return;
+    
+    state.currentDeckId = deckId;
+    state.currentSession = {
+        deckId: deckId,
+        currentCardIndex: 0,
+        correctAnswers: 0,
+        wrongAnswers: 0,
+        cards: [...deck.cards].sort(() => Math.random() - 0.5)
+    };
+    
+    // Удаляем выбор колоды
+    const deckSelection = document.querySelector('.deck-selection');
+    if (deckSelection) {
+        deckSelection.remove();
+    }
+    
+    // Показываем элементы обучения
+    document.querySelector('.learn-header').classList.remove('hidden');
+    document.querySelector('.card-container').classList.remove('hidden');
+    document.querySelector('.learn-controls').classList.remove('hidden');
+    
+    showNextCard();
+}
+
+// Статистика
+function updateStats() {
+    const totalCards = state.decks.reduce((sum, deck) => sum + deck.cards.length, 0);
+    
+    document.getElementById('totalCards').textContent = totalCards;
+    document.getElementById('totalDecks').textContent = state.decks.length;
+    document.getElementById('learnedToday').textContent = state.stats.learnedToday;
+    
+    updateRecentActivity();
+}
+
+function updateRecentActivity() {
+    const activityList = document.getElementById('recentActivity');
+    activityList.innerHTML = '';
+    
+    // Добавляем создание колод
+    state.decks.slice(-3).reverse().forEach(deck => {
+        const activityItem = document.createElement('div');
+        activityItem.className = 'activity-item';
+        activityItem.textContent = `Создана колода "${deck.name}"`;
+        activityList.appendChild(activityItem);
+    });
+    
+    if (state.stats.lastStudyDate) {
+        const activityItem = document.createElement('div');
+        activityItem.className = 'activity-item';
+        activityItem.textContent = `Изучено ${state.stats.learnedToday} слов сегодня`;
+        activityList.appendChild(activityItem);
+    }
+    
+    if (state.stats.sessionsCompleted) {
+        const activityItem = document.createElement('div');
+        activityItem.className = 'activity-item';
+        activityItem.textContent = `Завершено сессий: ${state.stats.sessionsCompleted}`;
+        activityList.appendChild(activityItem);
+    }
+}
+
+// Сохранение и загрузка данных
+function saveData() {
+    const data = {
+        decks: state.decks,
+        stats: state.stats
+    };
+    localStorage.setItem('litherium_data', JSON.stringify(data));
+}
+
+function loadData() {
+    const saved = localStorage.getItem('litherium_data');
+    if (saved) {
+        const data = JSON.parse(saved);
+        state.decks = data.decks || [];
+        state.stats = data.stats || { 
+            totalLearned: 0, 
+            learnedToday: 0, 
+            lastStudyDate: null,
+            sessionsCompleted: 0
+        };
+    }
+    
+    // Сбрасываем счетчик изученных сегодня если это новый день
+    const today = new Date().toDateString();
+    if (state.stats.lastStudyDate && new Date(state.stats.lastStudyDate).toDateString() !== today) {
+        state.stats.learnedToday = 0;
+    }
+}
+
+// Инициализация демо-данных при первом запуске
+function initDemoData() {
+    if (state.decks.length === 0) {
+        const demoDeck = {
+            id: 'demo',
+            name: 'Английские слова',
+            description: 'Базовые слова для начала',
+            cards: [
+                { id: '1', front: 'Hello', back: 'Привет', known: false },
+                { id: '2', front: 'Goodbye', back: 'До свидания', known: false },
+                { id: '3', front: 'Thank you', back: 'Спасибо', known: false },
+                { id: '4', front: 'Please', back: 'Пожалуйста', known: false }
+            ],
+            createdAt: new Date().toISOString()
+        };
+        state.decks.push(demoDeck);
+        saveData();
+    }
+}

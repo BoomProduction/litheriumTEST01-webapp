@@ -405,11 +405,11 @@ function startDeckLearning(deckId, method) {
             wrongAnswers: 0,
             method: 'repeat-unknown',
             cards: [...deck.cards].sort(() => Math.random() - 0.5),
-            wrongCards: [], // Карточки, которые нужно повторить
-            originalLength: deck.cards.length,
+            pendingReviewCards: [], // Карточки для повторения
+            originalDeckSize: deck.cards.length,
             learnedWords: [],
             reviewWords: [],
-            totalCardsInSession: deck.cards.length // Общее количество карточек в сессии
+            sessionCompleted: false
         };
     } else {
         state.currentSession = {
@@ -421,7 +421,7 @@ function startDeckLearning(deckId, method) {
             cards: [...deck.cards].sort(() => Math.random() - 0.5),
             learnedWords: [],
             reviewWords: [],
-            totalCardsInSession: deck.cards.length
+            sessionCompleted: false
         };
     }
     
@@ -435,6 +435,7 @@ function startDeckLearning(deckId, method) {
     document.querySelector('.learn-header').classList.remove('hidden');
     document.querySelector('.card-container').classList.remove('hidden');
     document.querySelector('.learn-controls').classList.remove('hidden');
+    document.getElementById('sessionComplete').classList.add('hidden');
     
     showNextCard();
 }
@@ -443,27 +444,18 @@ function showNextCard() {
     const session = state.currentSession;
     if (!session) return;
     
-    console.log('showNextCard called', {
-        currentIndex: session.currentCardIndex,
-        cardsLength: session.cards.length,
-        wrongCards: session.wrongCards ? session.wrongCards.length : 0,
-        method: session.method
-    });
-    
-    // Для метода с повторением: если дошли до конца основных карточек, добавляем неправильные
+    // Проверяем, нужно ли добавить карточки для повторения
     if (session.method === 'repeat-unknown' && 
         session.currentCardIndex >= session.cards.length && 
-        session.wrongCards && session.wrongCards.length > 0) {
+        session.pendingReviewCards.length > 0) {
         
-        console.log('Adding wrong cards to session', session.wrongCards.length);
-        session.cards = session.cards.concat(session.wrongCards);
-        session.wrongCards = [];
-        // Не сбрасываем currentCardIndex - продолжаем с того места где остановились
+        // Добавляем карточки для повторения в конец
+        session.cards = session.cards.concat(session.pendingReviewCards);
+        session.pendingReviewCards = [];
     }
     
     // Проверяем, завершена ли сессия
     if (session.currentCardIndex >= session.cards.length) {
-        console.log('Session completed, calling finishSession');
         finishSession();
         return;
     }
@@ -483,21 +475,17 @@ function updateProgress(session) {
     let currentPosition, totalCards;
     
     if (session.method === 'repeat-unknown') {
-        // Для метода с повторением: текущая позиция = основной индекс + количество пройденных неправильных
         currentPosition = session.currentCardIndex + 1;
-        // Общее количество = оригинальные карточки + неправильные карточки
-        totalCards = session.originalLength + (session.wrongCards ? session.wrongCards.length : 0);
+        totalCards = session.originalDeckSize + session.pendingReviewCards.length;
     } else {
-        // Для стандартного метода: просто текущий индекс и общее количество
         currentPosition = session.currentCardIndex + 1;
         totalCards = session.cards.length;
     }
     
-    const progress = ((currentPosition - 1) / totalCards) * 100;
+    // Ограничиваем прогресс 100%
+    const progress = Math.min(100, ((currentPosition - 1) / totalCards) * 100);
     document.getElementById('progressFill').style.width = `${progress}%`;
     document.getElementById('progressText').textContent = `${currentPosition}/${totalCards}`;
-    
-    console.log('Progress updated', { currentPosition, totalCards, progress });
 }
 
 function flipCard() {
@@ -509,8 +497,6 @@ function answerCard(isCorrect) {
     if (!session) return;
     
     const currentCard = session.cards[session.currentCardIndex];
-    
-    console.log('Answer given', { isCorrect, currentCard: currentCard.front });
     
     if (isCorrect) {
         session.correctAnswers++;
@@ -524,14 +510,17 @@ function answerCard(isCorrect) {
                 back: currentCard.back
             });
         }
+        
+        // Убираем из pendingReviewCards если там есть
+        session.pendingReviewCards = session.pendingReviewCards.filter(card => card.id !== currentCard.id);
+        
     } else {
         session.wrongAnswers++;
         
-        // Для метода с повторением добавляем карточку в неправильные
+        // Для метода с повторением добавляем карточку в pendingReviewCards
         if (session.method === 'repeat-unknown') {
-            if (!session.wrongCards.find(w => w.id === currentCard.id)) {
-                session.wrongCards.push(currentCard);
-                console.log('Added to wrong cards, total wrong:', session.wrongCards.length);
+            if (!session.pendingReviewCards.find(card => card.id === currentCard.id)) {
+                session.pendingReviewCards.push(currentCard);
             }
         }
         
@@ -553,25 +542,26 @@ function answerCard(isCorrect) {
     }
     
     session.currentCardIndex++;
-    console.log('Moving to next card, new index:', session.currentCardIndex);
     
-    // Небольшая задержка перед показом следующей карточки
-    setTimeout(() => {
-        showNextCard();
-    }, 300);
+    // Показываем следующую карточку
+    showNextCard();
 }
 
 function finishSession() {
     const session = state.currentSession;
     
-    console.log('Finishing session', session);
-    
     if (!session) return;
     
-    document.getElementById('sessionComplete').classList.remove('hidden');
-    document.querySelector('.learn-controls').classList.add('hidden');
+    // Помечаем сессию как завершенную
+    session.sessionCompleted = true;
+    
+    // Скрываем элементы обучения
     document.querySelector('.learn-header').classList.add('hidden');
     document.querySelector('.card-container').classList.add('hidden');
+    document.querySelector('.learn-controls').classList.add('hidden');
+    
+    // Показываем экран завершения
+    document.getElementById('sessionComplete').classList.remove('hidden');
     
     // Обновляем глобальную статистику
     state.stats.totalLearned += session.correctAnswers;
@@ -581,13 +571,16 @@ function finishSession() {
     state.stats.lastStudyDate = new Date().toISOString();
     
     // Добавляем в историю изучения
+    const totalCardsInSession = session.method === 'repeat-unknown' ? 
+        session.originalDeckSize : session.cards.length;
+    
     state.stats.studyHistory.unshift({
         date: new Date().toISOString(),
         deckId: session.deckId,
         method: session.method,
         correct: session.correctAnswers,
         wrong: session.wrongAnswers,
-        total: session.method === 'repeat-unknown' ? session.originalLength : session.cards.length,
+        total: totalCardsInSession,
         learnedWords: session.learnedWords || [],
         reviewWords: session.reviewWords || []
     });
@@ -598,6 +591,8 @@ function finishSession() {
     }
     
     // Формируем HTML для завершения сессии
+    const successRate = Math.round((session.correctAnswers / totalCardsInSession) * 100);
+    
     let sessionHTML = `
         <h2>🎉 Сессия завершена!</h2>
         <div class="session-stats">
@@ -613,7 +608,7 @@ function finishSession() {
             </div>
             <div class="stat-row">
                 <div class="stat-item">
-                    <div class="stat-value">${Math.round((session.correctAnswers / (session.method === 'repeat-unknown' ? session.originalLength : session.cards.length)) * 100)}%</div>
+                    <div class="stat-value">${successRate}%</div>
                     <div class="stat-label">Успех</div>
                 </div>
             </div>

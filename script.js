@@ -277,7 +277,8 @@ function startLearning() {
     const deckWithCards = state.decks.find(deck => deck.cards.length > 0);
     
     if (!deckWithCards) {
-        showDeckSelection();
+        alert('Сначала создайте колоду с карточками!');
+        showScreen('decksScreen');
         return;
     }
     
@@ -292,6 +293,74 @@ function startLearning() {
     
     showScreen('learnScreen');
     showNextCard();
+}
+
+function showNextCard() {
+    const session = state.currentSession;
+    if (!session || session.currentCardIndex >= session.cards.length) {
+        finishSession();
+        return;
+    }
+    
+    const currentCard = session.cards[session.currentCardIndex];
+    document.getElementById('cardFront').innerHTML = `<h3>${escapeHtml(currentCard.front)}</h3>`;
+    document.getElementById('cardBack').innerHTML = `<h3>${escapeHtml(currentCard.back)}</h3>`;
+    document.getElementById('learnCard').classList.remove('flipped');
+    
+    // Обновляем прогресс
+    const progress = (session.currentCardIndex / session.cards.length) * 100;
+    document.getElementById('progressFill').style.width = `${progress}%`;
+    document.getElementById('progressText').textContent = 
+        `${session.currentCardIndex + 1}/${session.cards.length}`;
+}
+
+function flipCard() {
+    document.getElementById('learnCard').classList.toggle('flipped');
+}
+
+function answerCard(isCorrect) {
+    const session = state.currentSession;
+    if (!session) return;
+    
+    if (isCorrect) {
+        session.correctAnswers++;
+        state.stats.learnedToday++;
+    } else {
+        session.wrongAnswers++;
+    }
+    
+    session.currentCardIndex++;
+    showNextCard();
+}
+
+function finishSession() {
+    const session = state.currentSession;
+    
+    document.getElementById('sessionComplete').classList.remove('hidden');
+    document.querySelector('.learn-controls').classList.add('hidden');
+    
+    // Обновляем статистику
+    state.stats.totalLearned += session.correctAnswers;
+    state.stats.sessionsCompleted = (state.stats.sessionsCompleted || 0) + 1;
+    state.stats.totalAnswers = (state.stats.totalAnswers || 0) + session.correctAnswers + session.wrongAnswers;
+    state.stats.correctAnswers = (state.stats.correctAnswers || 0) + session.correctAnswers;
+    state.stats.lastStudyDate = new Date().toISOString();
+    
+    // Добавляем в историю изучения
+    state.stats.studyHistory.unshift({
+        date: new Date().toISOString(),
+        deckId: session.deckId,
+        correct: session.correctAnswers,
+        wrong: session.wrongAnswers,
+        total: session.cards.length
+    });
+    
+    // Ограничиваем историю последними 10 сессиями
+    if (state.stats.studyHistory.length > 10) {
+        state.stats.studyHistory = state.stats.studyHistory.slice(0, 10);
+    }
+    
+    saveData();
 }
 
 function showDeckSelection() {
@@ -380,76 +449,6 @@ function startDeckLearning(deckId) {
     document.querySelector('.learn-controls').classList.remove('hidden');
     
     showNextCard();
-}
-
-function showNextCard() {
-    const session = state.currentSession;
-    if (!session || session.currentCardIndex >= session.cards.length) {
-        finishSession();
-        return;
-    }
-    
-    const currentCard = session.cards[session.currentCardIndex];
-    document.getElementById('cardFront').innerHTML = `<h3>${escapeHtml(currentCard.front)}</h3>`;
-    document.getElementById('cardBack').innerHTML = `<h3>${escapeHtml(currentCard.back)}</h3>`;
-    
-    // Сбрасываем переворот карточки
-    document.getElementById('learnCard').classList.remove('flipped');
-    
-    // Обновляем прогресс
-    const progress = (session.currentCardIndex / session.cards.length) * 100;
-    document.getElementById('progressFill').style.width = `${progress}%`;
-    document.getElementById('progressText').textContent = 
-        `${session.currentCardIndex + 1}/${session.cards.length}`;
-}
-
-function flipCard() {
-    document.getElementById('learnCard').classList.toggle('flipped');
-}
-
-function answerCard(isCorrect) {
-    const session = state.currentSession;
-    if (!session) return;
-    
-    if (isCorrect) {
-        session.correctAnswers++;
-        state.stats.learnedToday++;
-    } else {
-        session.wrongAnswers++;
-    }
-    
-    session.currentCardIndex++;
-    showNextCard();
-}
-
-function finishSession() {
-    const session = state.currentSession;
-    
-    document.getElementById('sessionComplete').classList.remove('hidden');
-    document.querySelector('.learn-controls').classList.add('hidden');
-    
-    // Обновляем статистику
-    state.stats.totalLearned += session.correctAnswers;
-    state.stats.sessionsCompleted = (state.stats.sessionsCompleted || 0) + 1;
-    state.stats.totalAnswers = (state.stats.totalAnswers || 0) + session.correctAnswers + session.wrongAnswers;
-    state.stats.correctAnswers = (state.stats.correctAnswers || 0) + session.correctAnswers;
-    state.stats.lastStudyDate = new Date().toISOString();
-    
-    // Добавляем в историю изучения
-    state.stats.studyHistory.unshift({
-        date: new Date().toISOString(),
-        deckId: session.deckId,
-        correct: session.correctAnswers,
-        wrong: session.wrongAnswers,
-        total: session.cards.length
-    });
-    
-    // Ограничиваем историю последними 10 сессиями
-    if (state.stats.studyHistory.length > 10) {
-        state.stats.studyHistory = state.stats.studyHistory.slice(0, 10);
-    }
-    
-    saveData();
 }
 
 // Статистика

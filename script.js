@@ -102,7 +102,7 @@ function deleteDeck(deckId) {
     renderDecksList();
     updateStats();
     
-    alert('Колода успешно удалена');
+    showNotification('Колода успешно удалена', 'success');
 }
 
 // Открытие колоды
@@ -204,6 +204,7 @@ function saveCardEdit(cardId) {
         card.back = back;
         saveData();
         renderCardsList();
+        showNotification('Карточка обновлена', 'success');
     }
     
     closeModal();
@@ -216,6 +217,7 @@ function deleteCard(cardId) {
     deck.cards = deck.cards.filter(c => c.id !== cardId);
     saveData();
     renderCardsList();
+    showNotification('Карточка удалена', 'success');
 }
 
 function closeModal() {
@@ -258,6 +260,7 @@ function createNewDeck() {
     saveData();
     hideAddDeckForm();
     renderDecksList();
+    showNotification('Колода создана', 'success');
 }
 
 // Управление карточками
@@ -296,6 +299,7 @@ function createNewCard() {
     saveData();
     hideAddCardForm();
     renderCardsList();
+    showNotification('Карточка добавлена', 'success');
 }
 
 // Обучение - выбор колоды
@@ -465,6 +469,7 @@ function finishSession() {
     `;
     
     saveData();
+    updateStats();
 }
 
 function restartSession() {
@@ -508,7 +513,8 @@ function updateRecentActivity() {
     if (state.stats.lastStudyDate) {
         const activityItem = document.createElement('div');
         activityItem.className = 'activity-item';
-        activityItem.textContent = `Изучено ${state.stats.learnedToday} слов сегодня`;
+        const lastDate = new Date(state.stats.lastStudyDate).toLocaleDateString();
+        activityItem.textContent = `Последняя тренировка: ${lastDate}`;
         activityList.appendChild(activityItem);
     }
     
@@ -518,29 +524,61 @@ function updateRecentActivity() {
         activityItem.textContent = `Завершено сессий: ${state.stats.sessionsCompleted}`;
         activityList.appendChild(activityItem);
     }
+    
+    if (state.stats.learnedToday > 0) {
+        const activityItem = document.createElement('div');
+        activityItem.className = 'activity-item';
+        activityItem.textContent = `Изучено сегодня: ${state.stats.learnedToday} слов`;
+        activityList.appendChild(activityItem);
+    }
 }
 
 // Функции для настроек
 function clearAllData() {
-    if (confirm('Вы уверены? Это удалит все колоды и статистику.')) {
-        state.decks = [];
-        state.stats = {
-            totalLearned: 0,
-            learnedToday: 0,
-            lastStudyDate: null,
-            sessionsCompleted: 0
-        };
-        state.currentDeckId = null;
-        state.currentSession = null;
-        saveData();
-        updateStats();
-        renderDecksList();
-        alert('Все данные очищены');
+    const confirmationText = "ОЧИСТИТЬ ВСЁ";
+    const userInput = prompt(`Введите "${confirmationText}" для подтверждения удаления всех данных:`);
+    
+    if (userInput === confirmationText) {
+        const btn = document.getElementById('clearAllBtn');
+        btn.classList.add('loading');
+        btn.textContent = 'Очистка...';
+        
+        setTimeout(() => {
+            state.decks = [];
+            state.stats = {
+                totalLearned: 0,
+                learnedToday: 0,
+                lastStudyDate: null,
+                sessionsCompleted: 0
+            };
+            state.currentDeckId = null;
+            state.currentSession = null;
+            saveData();
+            updateStats();
+            renderDecksList();
+            
+            btn.classList.remove('loading');
+            btn.textContent = 'Очистить всё';
+            
+            showNotification('Все данные успешно очищены', 'success');
+        }, 1500);
+    } else {
+        if (userInput !== null) {
+            showNotification('Текст подтверждения введен неверно. Данные не удалены.', 'error');
+        }
     }
 }
 
 function resetProgress() {
-    if (confirm('Вы уверены? Это обнулит всю статистику обучения.')) {
+    if (!confirm('Вы уверены, что хотите сбросить весь прогресс обучения? Статистика будет обнулена, но колоды останутся.')) {
+        return;
+    }
+    
+    const btn = document.getElementById('resetProgressBtn');
+    btn.classList.add('loading');
+    btn.textContent = 'Сброс...';
+    
+    setTimeout(() => {
         state.stats = {
             totalLearned: 0,
             learnedToday: 0,
@@ -549,36 +587,88 @@ function resetProgress() {
         };
         saveData();
         updateStats();
-        alert('Прогресс сброшен');
+        
+        btn.classList.remove('loading');
+        btn.textContent = 'Сбросить прогресс';
+        
+        showNotification('Прогресс успешно сброшен', 'success');
+    }, 1000);
+}
+
+// Функция для показа уведомлений
+function showNotification(message, type = 'info') {
+    // Удаляем старое уведомление если есть
+    const oldNotification = document.querySelector('.notification');
+    if (oldNotification) {
+        oldNotification.remove();
     }
+    
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    
+    // Добавляем стили в зависимости от типа
+    if (type === 'success') {
+        notification.style.background = 'var(--success-color)';
+    } else if (type === 'error') {
+        notification.style.background = 'var(--danger-color)';
+    } else {
+        notification.style.background = 'var(--primary-color)';
+    }
+    
+    document.body.appendChild(notification);
+    
+    // Автоматическое скрытие через 3 секунды
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 3000);
 }
 
 // Сохранение и загрузка данных
 function saveData() {
     const data = {
         decks: state.decks,
-        stats: state.stats
+        stats: state.stats,
+        version: '1.0'
     };
-    localStorage.setItem('litherium_data', JSON.stringify(data));
+    try {
+        localStorage.setItem('litherium_data', JSON.stringify(data));
+    } catch (e) {
+        console.error('Ошибка сохранения данных:', e);
+        showNotification('Ошибка сохранения данных', 'error');
+    }
 }
 
 function loadData() {
-    const saved = localStorage.getItem('litherium_data');
-    if (saved) {
-        const data = JSON.parse(saved);
-        state.decks = data.decks || [];
-        state.stats = data.stats || { 
-            totalLearned: 0, 
-            learnedToday: 0, 
-            lastStudyDate: null,
-            sessionsCompleted: 0
-        };
-    }
-    
-    // Сбрасываем счетчик изученных сегодня если это новый день
-    const today = new Date().toDateString();
-    if (state.stats.lastStudyDate && new Date(state.stats.lastStudyDate).toDateString() !== today) {
-        state.stats.learnedToday = 0;
+    try {
+        const saved = localStorage.getItem('litherium_data');
+        if (saved) {
+            const data = JSON.parse(saved);
+            state.decks = data.decks || [];
+            state.stats = data.stats || { 
+                totalLearned: 0, 
+                learnedToday: 0, 
+                lastStudyDate: null,
+                sessionsCompleted: 0
+            };
+        }
+        
+        // Сбрасываем счетчик изученных сегодня если это новый день
+        const today = new Date().toDateString();
+        if (state.stats.lastStudyDate && new Date(state.stats.lastStudyDate).toDateString() !== today) {
+            state.stats.learnedToday = 0;
+            saveData();
+        }
+    } catch (e) {
+        console.error('Ошибка загрузки данных:', e);
+        showNotification('Ошибка загрузки данных', 'error');
     }
 }
 
@@ -593,11 +683,77 @@ function initDemoData() {
                 { id: '1', front: 'Hello', back: 'Привет', known: false },
                 { id: '2', front: 'Goodbye', back: 'До свидания', known: false },
                 { id: '3', front: 'Thank you', back: 'Спасибо', known: false },
-                { id: '4', front: 'Please', back: 'Пожалуйста', known: false }
+                { id: '4', front: 'Please', back: 'Пожалуйста', known: false },
+                { id: '5', front: 'Yes', back: 'Да', known: false },
+                { id: '6', front: 'No', back: 'Нет', known: false }
             ],
             createdAt: new Date().toISOString()
         };
         state.decks.push(demoDeck);
         saveData();
+        showNotification('Демо-колода создана! Начните обучение', 'success');
     }
 }
+
+// Обработка клавиш для улучшения UX
+document.addEventListener('keydown', function(event) {
+    // Enter для быстрого подтверждения в формах
+    if (event.key === 'Enter') {
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.id === 'newDeckName' || activeElement.id === 'newCardFront' || activeElement.id === 'newCardBack')) {
+            event.preventDefault();
+            if (activeElement.id === 'newDeckName') {
+                document.getElementById('newDeckDescription').focus();
+            } else if (activeElement.id === 'newCardFront') {
+                document.getElementById('newCardBack').focus();
+            } else if (activeElement.id === 'newCardBack') {
+                createNewCard();
+            }
+        }
+    }
+    
+    // Escape для закрытия модальных окон
+    if (event.key === 'Escape') {
+        const modal = document.querySelector('.modal');
+        if (modal) {
+            closeModal();
+        }
+        
+        const addDeckForm = document.getElementById('addDeckForm');
+        if (addDeckForm && !addDeckForm.classList.contains('hidden')) {
+            hideAddDeckForm();
+        }
+        
+        const addCardForm = document.getElementById('addCardForm');
+        if (addCardForm && !addCardForm.classList.contains('hidden')) {
+            hideAddCardForm();
+        }
+    }
+});
+
+// Улучшенная обработка ошибок
+window.addEventListener('error', function(e) {
+    console.error('Global error:', e);
+    showNotification('Произошла ошибка в приложении', 'error');
+});
+
+// Экспорт для глобального использования
+window.showScreen = showScreen;
+window.clearAllData = clearAllData;
+window.resetProgress = resetProgress;
+window.showAddDeckForm = showAddDeckForm;
+window.hideAddDeckForm = hideAddDeckForm;
+window.createNewDeck = createNewDeck;
+window.showAddCardForm = showAddCardForm;
+window.hideAddCardForm = hideAddCardForm;
+window.createNewCard = createNewCard;
+window.flipCard = flipCard;
+window.answerCard = answerCard;
+window.openDeck = openDeck;
+window.deleteDeck = deleteDeck;
+window.editCard = editCard;
+window.deleteCard = deleteCard;
+window.saveCardEdit = saveCardEdit;
+window.closeModal = closeModal;
+window.startDeckLearning = startDeckLearning;
+window.restartSession = restartSession;

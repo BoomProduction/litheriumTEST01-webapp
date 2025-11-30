@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flashcards Mini App</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Flashcards MiniApp</title>
+    <link rel="stylesheet" href="/style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -17,24 +17,21 @@
 
     <button id="add-card-btn" class="add-btn">Добавить карточку</button>
 
-    <div class="bottom-buttons">
-        <button id="train-btn" class="train-btn">Начать тренировку</button>
-    </div>
+    <button id="train-btn" class="train-btn">Начать тренировку</button>
 
 </div>
 
-<!-- Модальное окно создания карточки -->
+<!-- Модальное окно -->
 <div id="modal" class="modal">
     <div class="modal-content">
         <h2>Новая карточка</h2>
-        <input id="front-input" type="text" placeholder="Слово / термин">
-        <input id="back-input" type="text" placeholder="Перевод / значение">
+        <input id="front-input" type="text" placeholder="Слово">
+        <input id="back-input" type="text" placeholder="Перевод">
         <button id="save-btn" class="save-btn">Сохранить</button>
         <button id="close-modal" class="close-btn">Закрыть</button>
     </div>
 </div>
 
-<script src="script.js"></script>
-
+<script src="/script.js" defer></script>
 </body>
 </html>

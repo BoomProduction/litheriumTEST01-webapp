@@ -406,7 +406,10 @@ function startDeckLearning(deckId, method) {
             method: 'repeat-unknown',
             cards: [...deck.cards].sort(() => Math.random() - 0.5),
             wrongCards: [], // Карточки, которые нужно повторить
-            originalLength: deck.cards.length
+            originalLength: deck.cards.length,
+            learnedWords: [],
+            reviewWords: [],
+            totalCardsInSession: deck.cards.length // Общее количество карточек в сессии
         };
     } else {
         state.currentSession = {
@@ -417,7 +420,8 @@ function startDeckLearning(deckId, method) {
             method: 'standard',
             cards: [...deck.cards].sort(() => Math.random() - 0.5),
             learnedWords: [],
-            reviewWords: []
+            reviewWords: [],
+            totalCardsInSession: deck.cards.length
         };
     }
     
@@ -439,17 +443,27 @@ function showNextCard() {
     const session = state.currentSession;
     if (!session) return;
     
-    // Для метода с повторением: если дошли до конца, добавляем неправильные карточки
+    console.log('showNextCard called', {
+        currentIndex: session.currentCardIndex,
+        cardsLength: session.cards.length,
+        wrongCards: session.wrongCards ? session.wrongCards.length : 0,
+        method: session.method
+    });
+    
+    // Для метода с повторением: если дошли до конца основных карточек, добавляем неправильные
     if (session.method === 'repeat-unknown' && 
         session.currentCardIndex >= session.cards.length && 
-        session.wrongCards.length > 0) {
+        session.wrongCards && session.wrongCards.length > 0) {
         
+        console.log('Adding wrong cards to session', session.wrongCards.length);
         session.cards = session.cards.concat(session.wrongCards);
         session.wrongCards = [];
-        session.currentCardIndex = session.originalLength; // Продолжаем с неправильных карточек
+        // Не сбрасываем currentCardIndex - продолжаем с того места где остановились
     }
     
+    // Проверяем, завершена ли сессия
     if (session.currentCardIndex >= session.cards.length) {
+        console.log('Session completed, calling finishSession');
         finishSession();
         return;
     }
@@ -462,14 +476,28 @@ function showNextCard() {
     document.getElementById('learnCard').classList.remove('flipped');
     
     // Обновляем прогресс
-    const totalCards = session.method === 'repeat-unknown' ? 
-        session.originalLength + session.wrongCards.length : 
-        session.cards.length;
-        
-    const progress = (session.currentCardIndex / totalCards) * 100;
+    updateProgress(session);
+}
+
+function updateProgress(session) {
+    let currentPosition, totalCards;
+    
+    if (session.method === 'repeat-unknown') {
+        // Для метода с повторением: текущая позиция = основной индекс + количество пройденных неправильных
+        currentPosition = session.currentCardIndex + 1;
+        // Общее количество = оригинальные карточки + неправильные карточки
+        totalCards = session.originalLength + (session.wrongCards ? session.wrongCards.length : 0);
+    } else {
+        // Для стандартного метода: просто текущий индекс и общее количество
+        currentPosition = session.currentCardIndex + 1;
+        totalCards = session.cards.length;
+    }
+    
+    const progress = ((currentPosition - 1) / totalCards) * 100;
     document.getElementById('progressFill').style.width = `${progress}%`;
-    document.getElementById('progressText').textContent = 
-        `${session.currentCardIndex + 1}/${totalCards}`;
+    document.getElementById('progressText').textContent = `${currentPosition}/${totalCards}`;
+    
+    console.log('Progress updated', { currentPosition, totalCards, progress });
 }
 
 function flipCard() {
@@ -482,12 +510,13 @@ function answerCard(isCorrect) {
     
     const currentCard = session.cards[session.currentCardIndex];
     
+    console.log('Answer given', { isCorrect, currentCard: currentCard.front });
+    
     if (isCorrect) {
         session.correctAnswers++;
         state.stats.learnedToday++;
         
         // Добавляем в изученные слова
-        if (!session.learnedWords) session.learnedWords = [];
         if (!session.learnedWords.find(w => w.id === currentCard.id)) {
             session.learnedWords.push({
                 id: currentCard.id,
@@ -498,13 +527,15 @@ function answerCard(isCorrect) {
     } else {
         session.wrongAnswers++;
         
-        // Для метода с повторением добавляем карточку в конец
+        // Для метода с повторением добавляем карточку в неправильные
         if (session.method === 'repeat-unknown') {
-            session.wrongCards.push(currentCard);
+            if (!session.wrongCards.find(w => w.id === currentCard.id)) {
+                session.wrongCards.push(currentCard);
+                console.log('Added to wrong cards, total wrong:', session.wrongCards.length);
+            }
         }
         
         // Добавляем в слова для повторения
-        if (!session.reviewWords) session.reviewWords = [];
         if (!session.reviewWords.find(w => w.id === currentCard.id)) {
             session.reviewWords.push({
                 id: currentCard.id,
@@ -522,14 +553,25 @@ function answerCard(isCorrect) {
     }
     
     session.currentCardIndex++;
-    showNextCard();
+    console.log('Moving to next card, new index:', session.currentCardIndex);
+    
+    // Небольшая задержка перед показом следующей карточки
+    setTimeout(() => {
+        showNextCard();
+    }, 300);
 }
 
 function finishSession() {
     const session = state.currentSession;
     
+    console.log('Finishing session', session);
+    
+    if (!session) return;
+    
     document.getElementById('sessionComplete').classList.remove('hidden');
     document.querySelector('.learn-controls').classList.add('hidden');
+    document.querySelector('.learn-header').classList.add('hidden');
+    document.querySelector('.card-container').classList.add('hidden');
     
     // Обновляем глобальную статистику
     state.stats.totalLearned += session.correctAnswers;
@@ -761,48 +803,4 @@ function initDemoData() {
         state.decks.push(demoDeck);
         saveData();
     }
-}
-
-// Информация о подписке на ТГК (для обсуждения)
-function checkSubscription() {
-    /* 
-    Для реализации проверки подписки на ТГК нужно:
-    
-    1. Создать бота с функцией проверки подписок
-    2. В настройках бота добавить канал в список каналов для проверки
-    3. Использовать метод Telegram Bot API: getChatMember
-    
-    Пример реализации:
-    
-    async function checkChannelSubscription(userId) {
-        const channelUsername = '@your_channel'; // Ваш ТГК
-        try {
-            const response = await fetch(`/botAPI/getChatMember`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chat_id: channelUsername,
-                    user_id: userId
-                })
-            });
-            const data = await response.json();
-            return data.result.status === 'member' || 
-                   data.result.status === 'administrator' || 
-                   data.result.status === 'creator';
-        } catch (error) {
-            console.error('Ошибка проверки подписки:', error);
-            return false;
-        }
-    }
-    
-    // Использование:
-    const user = Telegram.WebApp.initDataUnsafe.user;
-    if (user) {
-        checkChannelSubscription(user.id).then(isSubscribed => {
-            if (!isSubscribed) {
-                showSubscriptionRequiredScreen();
-            }
-        });
-    }
-    */
 }
